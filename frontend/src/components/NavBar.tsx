@@ -1,23 +1,26 @@
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useState } from "react";
-import logo from "../assets/TraveLoHI.png";
+import logo from "../assets/TraveLoHI-plain.png";
 import styled from "styled-components";
 import dummy from "../assets/dummy.webp";
 import glass from "../assets/magnifying-glass-solid.svg";
 import wallet from "../assets/wallet-solid.svg";
 import debt from "../assets/tag-solid.svg";
 import credit from "../assets/credit-card-solid.svg";
+import cart from "../assets/cart-shopping-solid.svg";
 
 const Header = styled.header`
   position: sticky;
   top: 0;
+  z-index: 10;
 `;
 
 const Nav = styled.nav`
   width: 100%;
   height: 4.5rem;
   background-color: var(--white);
+  box-shadow: 0rem 1rem 1rem -1rem var(--grey);
   display: flex;
   padding: 0.25rem;
   align-items: center;
@@ -25,18 +28,18 @@ const Nav = styled.nav`
   gap: 1rem;
 `;
 
-const Burger = styled.div`
-  color: var(--blue);
-  font-size: 1.5em;
-  cursor: pointer;
-  border-radius: 50%;
-  padding: 0 0.5rem;
-  transition: 0.3s ease-in;
+// const Burger = styled.div`
+//   color: var(--blue);
+//   font-size: 1.5em;
+//   cursor: pointer;
+//   border-radius: 50%;
+//   padding: 0 0.5rem;
+//   transition: 0.3s ease-in;
 
-  &:hover {
-    background: var(--gray);
-  }
-`;
+//   &:hover {
+//     background: var(--gray);
+//   }
+// `;
 
 const SearchBar = styled.div`
   position: relative;
@@ -228,7 +231,7 @@ const NavBar = () => {
         )}
 
         {/* burger menu */}
-        <Burger>☰</Burger>
+        {/* <Burger>☰</Burger> */}
 
         {/* logo */}
         <Link to="/">
@@ -240,12 +243,23 @@ const NavBar = () => {
           <input type="text" placeholder="Search..." />
         </SearchBar>
 
+        {/* cart */}
+        <Link to="/cart">
+          <Menu>
+            <img
+              src={cart}
+              alt="cart"
+              width="20px"
+            />
+            <p>Keranjang</p>
+          </Menu>
+        </Link>
         {/* pesanan saya */}
         <Link to="/my-order">
           <Menu>
             <img
               src="https://d1785e74lyxkqq.cloudfront.net/_next/static/v2/8/8c9954122d8006592fbcbd4a82ac994c.svg"
-              alt=""
+              alt="history"
             />
             <p>Pesanan Saya</p>
           </Menu>

@@ -1,17 +1,28 @@
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import styled from "styled-components";
-import dummy from "../../assets/dummy-post.jpg";
 import { storage } from "../../utils/firebase";
 import InputField from "../../components/InputField";
+import LoadingPopup from "../../components/LoadingPopup";
+import axios from "axios";
+import ErrorMessage from "../../components/ErrorMessage";
 
 interface HotelData {
   name: string;
   address: string;
   star: string;
-  image_url: string[];
+  description: string;
+  image_urls: string[];
+  facilities: number[];
 }
+
+const Label = styled.label`
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text);
+`;
 
 const FormContainer = styled.div`
   background: var(--white);
@@ -20,28 +31,19 @@ const FormContainer = styled.div`
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 `;
 
-const ImagePreview = styled.img`
-  width: 100%;
-  border-radius: 5px;
-  object-fit: cover;
-`;
-
 const ImageUploader = styled.div`
   width: 400px;
+  height: 200px;
   cursor: pointer;
+  border: 1rem dashed var(--blue);
+  border-radius: 1rem;
+  margin-bottom: 0.5rem;
 
   span {
     position: relative;
-    bottom: 120px;
+    top: 75px;
     display: grid;
     place-items: center;
-    visibility: hidden;
-  }
-
-  &:hover {
-    span {
-      visibility: visible;
-    }
   }
 `;
 
@@ -53,25 +55,44 @@ const UploadLabel = styled.label`
 
 const ImageInput = styled.input`
   width: 100%;
-  padding: 0.5rem;
-  font-size: 1rem;
-  border: 1px solid var(--grey);
-  border-radius: 0.375rem;
-  transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
-  outline: 0;
-  color: var(--text);
+`;
 
-  &:focus {
-    border-color: var(--blue);
-    box-shadow: 0 0 0 0.125em rgba(66, 153, 225, 0.25);
+const Previews = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+`;
+
+const PreviewContainer = styled.div`
+  display: flex;
+
+  button {
+    outline: 0;
+    border: none;
+    border-radius: 0 5px 5px 0;
+    color: var(--white);
+    background-color: var(--red);
+    padding: 0 0.5rem;
+    transition: 0.3s background-color;
+    cursor: pointer;
   }
+
+  button:hover {
+    background-color: var(--red-shade);
+  }
+`;
+
+const ImagePreview = styled.img`
+  width: 200px;
+  object-fit: cover;
+  border-radius: 5px 0 0 5px;
 `;
 
 const ButtonGroup = styled.div`
   display: flex;
   align-items: center;
   gap: 1rem;
-  margin-top: 1rem;
+  margin-top: 2rem;
 
   button {
     outline: 0;
@@ -116,17 +137,86 @@ const Radio = styled.label`
   }
 `;
 
+const DropdownContainer = styled.div`
+  position: relative;
+  width: 100%;
+  display: inline-block;
+`;
+
+const DropdownButton = styled.button`
+  width: 100%;
+  backround-color: transparent;
+  border: 1px solid var(--grey);
+  border-radius: 5px;
+  padding: 0.5rem;
+  cursor: pointer;
+
+  &:hover {
+    background-color: var(--gray);
+  }
+`;
+
+const DropdownContent = styled.div`
+  position: absolute;
+  width: 100%;
+  top: 3rem;
+  background: #fff;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  padding: 10px;
+  z-index: 1;
+`;
+
+const FacilityItem = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  cursor: pointer;
+
+  label,
+  input {
+    cursor: pointer;
+  }
+`;
+
+const TextArea = styled.textarea`
+  width: 100%;
+  height: 10rem;
+  padding: 0.75rem;
+  border: 1px solid var(--grey);
+  border-radius: 5px;
+  box-sizing: border-box;
+  resize: none;
+`;
+
 const AddHotelPage = () => {
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [readySend, setReadySend] = useState<boolean>(false);
+  const [error, setError] = useState<string>("");
+  const navigate = useNavigate();
+
   const [formData, setFormData] = useState<HotelData>({
     name: "",
     address: "",
     star: "",
-    image_url: [],
+    description: "",
+    image_urls: [],
+    facilities: [],
   });
 
-  const navigate = useNavigate();
+  const facilitiesList = [
+    { id: 1, name: "AC" },
+    { id: 2, name: "Restaurant" },
+    { id: 3, name: "Swimming Pool" },
+    { id: 4, name: "24-Hour Front Desk" },
+    { id: 5, name: "Parking" },
+    { id: 6, name: "Elevator" },
+    { id: 7, name: "WiFi" },
+    { id: 8, name: "Gym" },
+  ];
 
-  const [imagePreview, setImagePreview] = useState<string | null>("");
+  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
+  const [imageFiles, setImageFiles] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleUploaderClick = () => {
@@ -136,15 +226,33 @@ const AddHotelPage = () => {
   };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+    const files = e.target.files;
 
-    if (file) {
-      setImagePreview(URL.createObjectURL(file));
+    if (files && files.length > 0) {
+      const newPreviews = Array.from(files).map((file) =>
+        URL.createObjectURL(file)
+      );
+
+      setImagePreviews((prevPreviews) => [...prevPreviews, ...newPreviews]);
+      setImageFiles((prevFiles) => [...prevFiles, ...Array.from(files)]);
     }
   };
 
+  const handleDeleteImage = (index: number) => {
+    const newPreviews = [...imagePreviews];
+    const newFiles = [...imageFiles];
+
+    newPreviews.splice(index, 1);
+    newFiles.splice(index, 1);
+
+    setImagePreviews(newPreviews);
+    setImageFiles(newFiles);
+  };
+
   const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+    >
   ) => {
     const { name, value } = e.target;
 
@@ -154,70 +262,144 @@ const AddHotelPage = () => {
     }));
   };
 
+  // facility dropdown
+  const [isFacilityDropdownOpen, setIsFacilityDropdownOpen] =
+    useState<boolean>(false);
+
+  const toggleFacilityDropdown = () => {
+    setIsFacilityDropdownOpen((prevState) => !prevState);
+  };
+
+  const handleFacilityCheckboxChange = (facilityId: number) => {
+    setFormData((prevData) => {
+      const isSelected = prevData.facilities.includes(facilityId);
+
+      if (isSelected) {
+        const updatedFacilities = prevData.facilities.filter(
+          (id) => id !== facilityId
+        );
+        return { ...prevData, facilities: updatedFacilities };
+      } else {
+        return {
+          ...prevData,
+          facilities: [...prevData.facilities, facilityId],
+        };
+      }
+    });
+  };
+
+  useEffect(() => {
+    const sendDataToBackend = async () => {
+      setIsLoading(true);
+      setReadySend(false);
+
+      // console.log("Submitted", formData);
+      try {
+        const response = await axios.post(
+          "http://127.0.0.1:8000/api/auth/add_hotel",
+          formData,
+          { withCredentials: true }
+        );
+
+        if (response.status === 201) {
+          console.log(response.data.message);
+          setIsLoading(false);
+          navigate(-1);
+        }
+      } catch (error) {
+        setIsLoading(false);
+        if (axios.isAxiosError(error)) {
+          // console.log("Error creating promo", error.response?.data.error);
+          setError(error.response?.data.error);
+        }
+      }
+    };
+
+    if (formData.image_urls.length > 0 && readySend) {
+      sendDataToBackend();
+    }
+  }, [formData, readySend]);
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    // upload file gambar
-    const file = fileInputRef.current?.files?.[0];
+    // console.log("submitted", formData);
 
-    if (file) {
-      const storageRef = ref(storage, `promos/${file.name}`);
+    setReadySend(true);
 
-      // Upload ke storage
-      await uploadBytes(storageRef, file);
+    if (imageFiles) {
+      setIsLoading(true);
+      const uploadPromises = imageFiles.map(async (file) => {
+        const storageRef = ref(storage, `hotels/${file.name}`);
+        await uploadBytes(storageRef, file);
+        return getDownloadURL(storageRef);
+      });
 
-      // Mendapatkan URL gambar dari Firebase Storage
-      const imageUrl = await getDownloadURL(storageRef);
+      const imageUrls = await Promise.all(uploadPromises);
 
-      console.log("Image uploaded successfully. URL:", imageUrl);
+      setFormData((prevData) => ({
+        ...prevData,
+        image_urls: imageUrls,
+      }));
 
-      // Mengatur URL gambar di objek formData
-      // setFormData((prevData) => ({
-      //   ...prevData,
-      //   image_url: imageUrl,
-      // }));
+      console.log("Image uploaded successfully. URL:", imageUrls);
+
+      setImagePreviews([]);
+      setImageFiles([]);
+      setIsLoading(false);
     }
   };
 
   return (
-    <FormContainer>
-      <h2 style={{ marginBottom: "1rem" }}>Add Promo</h2>
-      <form onSubmit={handleSubmit}>
-        <ImageUploader onClick={handleUploaderClick}>
-          <UploadLabel htmlFor="image">Promo Image</UploadLabel>
-          <ImageInput
-            ref={fileInputRef}
-            type="file"
-            name="image_url"
-            accept="image/*"
-            onChange={handleImageChange}
-            hidden
-          />
-          <ImagePreview
-            src={imagePreview ? imagePreview : dummy}
-            alt="Preview"
-          />
-          <span>Upload Image</span>
-        </ImageUploader>
+    <>
+      <LoadingPopup isLoading={isLoading} />
+      <FormContainer>
+        <h2 style={{ marginBottom: "1rem" }}>Add Hotel</h2>
+        <form onSubmit={handleSubmit}>
+          <UploadLabel htmlFor="image">Hotel Image</UploadLabel>
+          <ImageUploader onClick={handleUploaderClick}>
+            <ImageInput
+              ref={fileInputRef}
+              type="file"
+              name="image_url"
+              accept="image/*"
+              onChange={handleImageChange}
+              hidden
+            />
 
-        <InputField
-          labelName="Hotel Name"
-          type="text"
-          name="name"
-          placeholder="Enter hotel name"
-          handleChange={handleInputChange}
-          value={formData.name}
-        />
-        <InputField
-          labelName="Hotel Address"
-          type="text"
-          name="address"
-          placeholder="Enter hotel address"
-          handleChange={handleInputChange}
-          value={formData.address}
-        />
+            <span>Click to Upload Image</span>
+          </ImageUploader>
 
-        <RadioContainer>
+          <Previews>
+            {imagePreviews.map((preview, index) => (
+              <PreviewContainer key={index}>
+                <ImagePreview src={preview} alt={`Preview ${index + 1}`} />
+                <button type="button" onClick={() => handleDeleteImage(index)}>
+                  Delete
+                </button>
+              </PreviewContainer>
+            ))}
+          </Previews>
+
+          <InputField
+            labelName="Hotel Name"
+            type="text"
+            name="name"
+            placeholder="Enter hotel name"
+            handleChange={handleInputChange}
+            value={formData.name}
+          />
+          <InputField
+            labelName="Hotel Address"
+            type="text"
+            name="address"
+            placeholder="Enter hotel address"
+            handleChange={handleInputChange}
+            value={formData.address}
+          />
+
+          <Label htmlFor="star">Hotel Star</Label>
+          <RadioContainer>
             <Radio>
               <input
                 type="radio"
@@ -225,7 +407,7 @@ const AddHotelPage = () => {
                 value="1"
                 onChange={handleInputChange}
               />{" "}
-              <p>1</p>
+              <p>1⭐</p>
             </Radio>
             <Radio>
               <input
@@ -234,7 +416,7 @@ const AddHotelPage = () => {
                 value="2"
                 onChange={handleInputChange}
               />{" "}
-              <p>2</p>
+              <p>2⭐</p>
             </Radio>
             <Radio>
               <input
@@ -243,7 +425,7 @@ const AddHotelPage = () => {
                 value="3"
                 onChange={handleInputChange}
               />{" "}
-              <p>3</p>
+              <p>3⭐</p>
             </Radio>
             <Radio>
               <input
@@ -252,7 +434,7 @@ const AddHotelPage = () => {
                 value="4"
                 onChange={handleInputChange}
               />{" "}
-              <p>4</p>
+              <p>4⭐</p>
             </Radio>
             <Radio>
               <input
@@ -261,19 +443,58 @@ const AddHotelPage = () => {
                 value="5"
                 onChange={handleInputChange}
               />{" "}
-              <p>5</p>
+              <p>5⭐</p>
             </Radio>
           </RadioContainer>
 
-        <ButtonGroup>
-          <button type="submit">Add Promo</button>
+          <div style={{ marginBottom: '0.5rem' }}>
+            <Label htmlFor="facilities">Select Facilities</Label>
+            <DropdownContainer>
+              <DropdownButton type="button" onClick={toggleFacilityDropdown}>
+                Choose Facility
+              </DropdownButton>
+              {isFacilityDropdownOpen && (
+                <DropdownContent>
+                  {facilitiesList.map((facility) => (
+                    <FacilityItem key={facility.id}>
+                      <input
+                        type="checkbox"
+                        id={`facility-${facility.id}`}
+                        checked={formData.facilities.includes(facility.id)}
+                        onChange={() =>
+                          handleFacilityCheckboxChange(facility.id)
+                        }
+                      />
+                      <label htmlFor={`facility-${facility.id}`}>
+                        {facility.name}
+                      </label>
+                    </FacilityItem>
+                  ))}
+                </DropdownContent>
+              )}
+            </DropdownContainer>
+          </div>
 
-          <button type="button" onClick={() => navigate(-1)}>
-            Cancel
-          </button>
-        </ButtonGroup>
-      </form>
-    </FormContainer>
+          <Label htmlFor="description">Hotel Description</Label>
+          <TextArea
+            name="description"
+            placeholder="Description..."
+            value={formData.description}
+            onChange={handleInputChange}
+          />
+
+          <ErrorMessage error={error} />
+
+          <ButtonGroup>
+            <button type="submit">Add Hotel</button>
+
+            <button type="button" onClick={() => navigate(-1)}>
+              Cancel
+            </button>
+          </ButtonGroup>
+        </form>
+      </FormContainer>
+    </>
   );
 };
 

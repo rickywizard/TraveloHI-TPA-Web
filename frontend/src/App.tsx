@@ -15,6 +15,19 @@ import AddPromoPage from "./pages/adminPages/AddPromoPage";
 import AdminHotelPage from "./pages/adminPages/AdminHotelPage";
 import PublicRoute from "./middlewares/PublicRoute";
 import AddHotelPage from "./pages/adminPages/AddHotelPage";
+import SendNewsPage from "./pages/adminPages/SendNewsPage";
+import AddRoomPage from "./pages/adminPages/AddRoomPage";
+import HotelDetailPage from "./pages/normalPages/HotelDetailPage";
+import HelpPage from "./pages/normalPages/HelpPage";
+import AdvertisementPage from "./pages/normalPages/AdvertisementPage";
+import ArticlesPage from "./pages/normalPages/ArticlesPage";
+import AboutPage from "./pages/normalPages/AboutPage";
+import HotelBookingPage from "./pages/normalPages/HotelBookingPage";
+import AuthorizedRoute from "./middlewares/AuthorizedRoute";
+import CartPage from "./pages/normalPages/CartPage";
+import NormalLayout from "./layouts/NormalLayout";
+import BaseLayout from "./layouts/BaseLayout";
+import MyOrderPage from "./pages/normalPages/MyOrderPage";
 
 const App = () => {
   return (
@@ -24,17 +37,53 @@ const App = () => {
           <Route
             path="/"
             element={
-              <MainLayout>
+              <BaseLayout>
                 <HomePage />
-              </MainLayout>
+              </BaseLayout>
             }
           />
           <Route path="/unauthorized" element={<UnauthorizedPage />} />
+          {/* If user already login, redirect */}
           <Route element={<PublicRoute />}>
             <Route path="/login" element={<LoginPage />} />
             <Route path="/login-otp" element={<OTPLoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
             <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          </Route>
+
+          {/* Normal route */}
+          <Route path="/help-center" element={<HelpPage />} />
+          <Route path="/advertisement" element={<AdvertisementPage />} />
+          <Route path="/articles" element={<ArticlesPage />} />
+          <Route path="/about-us" element={<AboutPage />} />
+          <Route
+            path="/hotel/:id"
+            element={
+              <MainLayout>
+                <HotelDetailPage />
+              </MainLayout>
+            }
+          />
+
+          {/* Protected for logged in user */}
+          <Route element={<AuthorizedRoute />}>
+            <Route path="/hotel/booking" element={<HotelBookingPage />} />
+            <Route
+              path="/cart"
+              element={
+                <NormalLayout>
+                  <CartPage />
+                </NormalLayout>
+              }
+            />
+            <Route
+              path="/my-order"
+              element={
+                <NormalLayout>
+                  <MyOrderPage />
+                </NormalLayout>
+              }
+            />
           </Route>
 
           {/* Protected only admin */}
@@ -56,6 +105,14 @@ const App = () => {
               }
             />
             <Route
+              path="/admin/newsletter"
+              element={
+                <AdminLayout>
+                  <SendNewsPage />
+                </AdminLayout>
+              }
+            />
+            <Route
               path="/admin/hotels"
               element={
                 <AdminLayout>
@@ -68,6 +125,14 @@ const App = () => {
               element={
                 <AdminLayout>
                   <AddHotelPage />
+                </AdminLayout>
+              }
+            />
+            <Route
+              path="/admin/hotels/:id/add-room"
+              element={
+                <AdminLayout>
+                  <AddRoomPage />
                 </AdminLayout>
               }
             />

@@ -97,8 +97,8 @@ const Footer = () => {
           <Links>
             <h4 style={{ marginBottom: "1rem" }}>About Traveloka</h4>
             <Link to="/help-center">Help Center</Link>
-            <Link to="/flights">Flight</Link>
-            <Link to="/hotels">Hotels</Link>
+            <Link to="/advertisement">Advertisement</Link>
+            <Link to="/articles">Articles</Link>
             <Link to="/about-us">About Us</Link>
           </Links>
           <Links>

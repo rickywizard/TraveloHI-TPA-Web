@@ -70,16 +70,15 @@ export const AuthProvider = ({ children }: IChildren) => {
 
       if (response.status === 200) {
         console.log(response.data.message);
+        fetchUserData();
+        setIsLoading(false);
+        navigate("/");
       }
-
-      fetchUserData();
-      setIsLoading(false);
-      navigate("/");
     } catch (error) {
+      setIsLoading(false);
       if (axios.isAxiosError(error)) {
         // console.log(error.response?.data.message);
-        const errorMessage = error.response?.data.message || "Unknown error";
-        setErrorMessage(errorMessage);
+        setErrorMessage(error.response?.data.error);
       }
     }
   };
@@ -97,15 +96,14 @@ export const AuthProvider = ({ children }: IChildren) => {
 
       if (response.status === 200) {
         console.log(response.data.message);
+        fetchUserData();
+        setIsLoading(false);
+        navigate("/");
       }
-
-      fetchUserData();
-      setIsLoading(false);
-      navigate("/");
     } catch (error) {
+      setIsLoading(false);
       if (axios.isAxiosError(error)) {
-        const errorMessage = error.response?.data.message || "Unknown error";
-        setErrorMessage(errorMessage);
+        setErrorMessage(error.response?.data.error);
       }
     }
   };
@@ -122,9 +120,10 @@ export const AuthProvider = ({ children }: IChildren) => {
       );
       if (response.status === 200) {
         console.log(response.data.message);
+        setIsLoading(false);
       }
-      setIsLoading(false);
     } catch (error) {
+      setIsLoading(false);
       console.log("Logout failed: ", error);
     }
 

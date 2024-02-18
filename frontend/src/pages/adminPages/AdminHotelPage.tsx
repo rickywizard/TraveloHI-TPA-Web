@@ -1,6 +1,8 @@
 import { Link } from "react-router-dom";
 import styled from "styled-components";
 import { IHotel } from "../../interfaces/hotel-interface";
+import { useHotel } from "../../hooks/useHotel";
+import LoadingPopup from "../../components/LoadingPopup";
 
 const Title = styled.h2`
   color: var(--text);
@@ -67,18 +69,22 @@ const AddRoomButton = styled(Link)`
   }
 `;
 
-const DeleteButton = styled.button`
-  outline: 0;
-  border: none;
-  border-radius: 5px;
-  background-color: var(--red);
+const ViewButton = styled(Link)`
+  background-color: var(--orange);
   color: var(--white);
   padding: 0.5rem 1rem;
-  transition: 0.3s background-color;
+  text-align: center;
+  font-weight: bold;
+  outline: 0;
+  border: 0;
+  border-radius: 5px;
+  text-decoration: none;
+  display: inline-block;
   cursor: pointer;
+  transition: background-color 0.3s;
 
   &:hover {
-    background-color: var(--red-shade);
+    background-color: var(--orange-shade);
   }
 `;
 
@@ -95,32 +101,35 @@ interface HotelCardProps {
 const HotelCard: React.FC<HotelCardProps> = ({ hotel }) => {
   return (
     <HotelCardContainer>
-      <HotelImage src={hotel.image_url[0]} alt={hotel.name} />
+      <HotelImage src={hotel.hotel_images[0].image_url} alt={hotel.name} />
       <HotelName>{hotel.name}</HotelName>
       <ActionButtons>
         <AddRoomButton to={`/admin/hotels/${hotel.id}/add-room`}>
           Add Room
         </AddRoomButton>
-        <DeleteButton>Delete</DeleteButton>
+        <ViewButton to={`/hotel/${hotel.id}`}>View Detail</ViewButton>
       </ActionButtons>
     </HotelCardContainer>
   );
 };
 
 const AdminHotelPage = () => {
-  
+  const { hotels, isLoading } = useHotel();
+
+  console.log(hotels);
 
   return (
     <>
+      <LoadingPopup isLoading={isLoading} />
       <Title>Manage Hotel Page</Title>
       <Link to="/admin/hotels/add" style={{ textDecoration: "none" }}>
         <AddButton>Add New Hotel</AddButton>
       </Link>
 
       <ListHotelContainer>
-        {/* {hotels.map((hotel) => (
+        {hotels.map((hotel) => (
           <HotelCard key={hotel.id} hotel={hotel} />
-        ))} */}
+        ))}
       </ListHotelContainer>
     </>
   );

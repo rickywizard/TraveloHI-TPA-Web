@@ -6,10 +6,13 @@ import { useNavigate, useParams } from "react-router-dom";
 import { storage } from "../../utils/firebase";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import axios from "axios";
+import ErrorMessage from "../../components/ErrorMessage";
+import LoadingPopup from "../../components/LoadingPopup";
 
 interface PromoData {
   name: string;
   code: string;
+  discount: string;
   expired_date: string;
   image_url: string;
 }
@@ -103,6 +106,9 @@ const AddPromoPage = () => {
   const { id } = useParams();
   const [isUpdateMode, setIsUpdateMode] = useState<boolean>(false);
   const [readyUpdate, setReadyUpdate] = useState<boolean>(false);
+  const [readySend, setReadySend] = useState<boolean>(false);
+  const [error, setError] = useState<string>("");
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
   useEffect(() => {
     if (id) {
@@ -112,6 +118,7 @@ const AddPromoPage = () => {
   }, [id]);
 
   const fetchPromoData = async () => {
+    setIsLoading(true);
     try {
       const response = await axios.get(
         `http://127.0.01:8000/api/auth/get_promo/${id}`,
@@ -132,8 +139,10 @@ const AddPromoPage = () => {
         });
 
         setImagePreview(promoData.image_url || dummy);
+        setIsLoading(false);
       }
     } catch (error) {
+      setIsLoading(false);
       console.error("Error fetching promo data:", error);
     }
   };
@@ -141,6 +150,7 @@ const AddPromoPage = () => {
   const [formData, setFormData] = useState<PromoData>({
     name: "",
     code: "",
+    discount: "",
     expired_date: "",
     image_url: "",
   });
@@ -175,8 +185,11 @@ const AddPromoPage = () => {
     }));
   };
 
+  // Create
   useEffect(() => {
     const sendDataToBackend = async () => {
+      setIsLoading(true);
+      setReadySend(false);
       try {
         const response = await axios.post(
           "http://127.0.0.1:8000/api/auth/add_promo",
@@ -184,22 +197,27 @@ const AddPromoPage = () => {
           { withCredentials: true }
         );
 
-        console.log(response.data.message);
-
-        navigate(-1);
+        if (response.status === 201) {
+          console.log(response.data.message);
+          setIsLoading(false);
+          navigate(-1);
+        }
       } catch (error) {
+        setIsLoading(false);
         if (axios.isAxiosError(error)) {
-          console.log("Error creating promo", error.response?.data.error);
+          // console.log("Error creating promo", error.response?.data.error);
+          setError(error.response?.data.error);
         }
       }
     };
 
     // Pastikan image_url sudah terisi sebelum mengirim ke backend
-    if (formData.image_url && !isUpdateMode) {
+    if (formData.image_url && readySend && !isUpdateMode) {
       sendDataToBackend();
     }
-  }, [formData.image_url]);
+  }, [formData, readySend]);
 
+  // Update
   useEffect(() => {
     const sendDataToBackend = async () => {
       const filteredFormData = {
@@ -209,19 +227,26 @@ const AddPromoPage = () => {
         name: formData.name,
       };
       console.log(filteredFormData);
-      
+
+      setIsLoading(true);
       try {
         const response = await axios.put(
           `http://127.0.0.1:8000/api/auth/update_promo/${id}`,
           filteredFormData,
           { withCredentials: true }
         );
-        console.log(response.data.message);
 
-        navigate(-1);
+        if (response.status === 200) {
+          console.log(response.data.message);
+          setIsLoading(false);
+          navigate(-1);
+        }
       } catch (error) {
+        setIsLoading(false);
+        setReadyUpdate(false);
         if (axios.isAxiosError(error)) {
-          console.log("Error updating promo", error.response?.data.error);
+          // console.log("Error updating promo", error.response?.data.error);
+          setError(error.response?.data.error);
         }
       }
     };
@@ -234,6 +259,8 @@ const AddPromoPage = () => {
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+
+    setReadySend(true);
 
     // upload file gambar
     const file = fileInputRef.current?.files?.[0];
@@ -263,6 +290,7 @@ const AddPromoPage = () => {
 
   return (
     <>
+      <LoadingPopup isLoading={isLoading} />
       <FormContainer>
         <h2 style={{ marginBottom: "1rem" }}>
           {isUpdateMode ? "Update Promo" : "Add Promo"}
@@ -302,6 +330,14 @@ const AddPromoPage = () => {
             value={formData.code}
           />
           <InputField
+            labelName="Discount"
+            type="number"
+            name="discount"
+            placeholder="Enter discount"
+            handleChange={handleInputChange}
+            value={formData.discount.toString()}
+          />
+          <InputField
             labelName="Expired Date"
             type="datetime-local"
             name="expired_date"
@@ -310,6 +346,8 @@ const AddPromoPage = () => {
             handleChange={handleInputChange}
             value={formData.expired_date}
           />
+
+          <ErrorMessage error={error} />
 
           <ButtonGroup>
             <button type="submit">

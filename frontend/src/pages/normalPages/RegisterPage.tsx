@@ -11,6 +11,7 @@ import { storage } from "../../utils/firebase";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import ReCAPTCHA from "react-google-recaptcha";
 import LoadingPopup from "../../components/LoadingPopup";
+import ErrorMessage from "../../components/ErrorMessage";
 
 interface RegisterData {
   first_name: string;
@@ -23,7 +24,6 @@ interface RegisterData {
   security_question: string;
   security_answer: string;
   is_subscriber: boolean;
-  is_active: boolean;
 }
 
 const RadioContainer = styled.div`
@@ -69,6 +69,7 @@ const Button = styled.button`
   padding: 0.5rem 0;
   border-radius: 5px;
   width: 100%;
+  margin-top: 0.5rem;
   cursor: pointer;
 
   &:hover {
@@ -127,12 +128,6 @@ const UploadIcon = styled.div`
   place-items: center;
 `;
 
-const ErrorDiv = styled.div`
-  color: red;
-  font-size: 0.875rem;
-  margin-bottom: 0.5rem;
-`;
-
 const LoginLink = styled.p`
   text-align: center;
   margin: 0.5rem 0;
@@ -150,8 +145,8 @@ const LoginLink = styled.p`
 `;
 
 const RegisterPage = () => {
-  const [errorMessage, setErrorMessage] = useState<string>("");
   const [error, setError] = useState<string>("");
+  const [readySend, setReadySend] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const recaptcha = useRef<ReCAPTCHA>(null);
 
@@ -166,7 +161,6 @@ const RegisterPage = () => {
     security_question: "",
     security_answer: "",
     is_subscriber: false,
-    is_active: true,
   });
 
   const navigate = useNavigate();
@@ -204,6 +198,7 @@ const RegisterPage = () => {
   useEffect(() => {
     const sendDataToBackend = async () => {
       setIsLoading(true);
+      setReadySend(false);
       try {
         const response = await axios.post(
           "http://127.0.0.1:8000/api/register",
@@ -212,82 +207,28 @@ const RegisterPage = () => {
 
         if (response.status === 200) {
           console.log(response.data.message);
+          setIsLoading(false);
+          navigate("/login");
         }
-        setIsLoading(false);
-        navigate("/login");
       } catch (error) {
+        setIsLoading(false);
         if (axios.isAxiosError(error)) {
-          console.log("Error register", error.response?.data.message);
-          setErrorMessage(error.response?.data.message);
+          // console.log("Error register", error.response?.data.message);
+          setError(error.response?.data.error);
         }
       }
     };
 
-    if (formData.profile_picture_url) {
+    if (formData.profile_picture_url && readySend) {
       sendDataToBackend();
     }
-  }, [formData.profile_picture_url]);
+  }, [formData, readySend]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-
+  
     console.log(formData);
-
-    // validasi
-    if (
-      formData.first_name.trim() === "" ||
-      formData.last_name.trim() === "" ||
-      formData.email.trim() === "" ||
-      formData.password.trim() === "" ||
-      formData.date_of_birth.trim() === "" ||
-      formData.gender.trim() === "" ||
-      formData.security_question.trim() === "" ||
-      formData.security_answer.trim() === ""
-    ) {
-      setError("Field tidak boleh kosong");
-      return;
-    }
-
-    if (
-      formData.first_name.length <= 5 ||
-      !/^[a-zA-Z]+$/.test(formData.first_name)
-    ) {
-      setError(
-        "First name harus lebih dari 5 karakter dan tidak boleh mengandung simbol atau angka"
-      );
-      return;
-    }
-
-    if (
-      formData.last_name.length <= 5 ||
-      !/^[a-zA-Z]+$/.test(formData.last_name)
-    ) {
-      setError(
-        "Last name harus lebih dari 5 karakter dan tidak boleh mengandung simbol atau angka"
-      );
-      return;
-    }
-
-    const birthDate = new Date(formData.date_of_birth);
-    const currentDate = new Date();
-    const age = currentDate.getFullYear() - birthDate.getFullYear();
-
-    if (age <= 17) {
-      setError("Usia harus lebih dari 17 tahun");
-      return;
-    }
-
-    const passwordRegex =
-      /^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,30}$/;
-
-    if (!passwordRegex.test(formData.password)) {
-      setError(
-        "Password harus mengandung huruf kapital, huruf kecil, angka, dan simbol, dengan panjang 8-30 karakter"
-      );
-      return;
-    }
-
-    // ----------------------------------------------------
+    setReadySend(true);
 
     const captchaValue = recaptcha.current?.getValue();
 
@@ -498,15 +439,14 @@ const RegisterPage = () => {
             <p>Dapatkan informasi terbaru</p>
           </CheckboxContainer>
 
+          <ErrorMessage error={error} />
+
           <ReCAPTCHA
-            style={{ marginBottom: "0.5rem" }}
+            style={{ marginTop: "0.5rem" }}
             ref={recaptcha}
             sitekey={import.meta.env.VITE_SITE_KEY}
           />
-
-          {error && <ErrorDiv>{error}</ErrorDiv>}
-          {errorMessage && <ErrorDiv>{errorMessage}</ErrorDiv>}
-
+          
           <Button type="submit">Register</Button>
 
           <Link to="/login">

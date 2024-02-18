@@ -39,6 +39,8 @@ func main() {
 	models.Migrate(db)
 	seeders.SeedUser(db)
 	seeders.SeedPromo(db)
+	seeders.SeedFacility(db)
+	seeders.SeedHotel(db)
 
 	// Middleware
 	app.Use(recover.New())

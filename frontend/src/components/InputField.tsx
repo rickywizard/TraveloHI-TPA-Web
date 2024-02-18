@@ -1,5 +1,5 @@
-import React, { ChangeEvent } from 'react';
-import styled from 'styled-components';
+import React, { ChangeEvent } from "react";
+import styled from "styled-components";
 
 interface InputFieldProps {
   labelName: string;
@@ -8,10 +8,11 @@ interface InputFieldProps {
   placeholder: string;
   value: string;
   handleChange: (e: ChangeEvent<HTMLInputElement>) => void;
-  step?: string
+  step?: string;
 }
 
 const InputContainer = styled.div`
+  width: 100%;
   margin-bottom: 0.5rem;
 `;
 
@@ -26,7 +27,7 @@ const Input = styled.input`
   width: 100%;
   padding: 0.5rem;
   font-size: 1rem;
-  border: 1px solid var(--grey); 
+  border: 1px solid var(--grey);
   border-radius: 0.375rem;
   transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
   outline: 0;
@@ -38,7 +39,15 @@ const Input = styled.input`
   }
 `;
 
-const InputField: React.FC<InputFieldProps> = ({ labelName, type, name, placeholder, value, handleChange, step }) => {
+const InputField: React.FC<InputFieldProps> = ({
+  labelName,
+  type,
+  name,
+  placeholder,
+  value,
+  handleChange,
+  step,
+}) => {
   return (
     <InputContainer>
       <Label htmlFor={name}>{labelName}</Label>

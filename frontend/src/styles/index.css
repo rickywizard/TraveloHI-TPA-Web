@@ -4,6 +4,9 @@
   --white: #FFFFFF;
   --blue: #1BA0E2;
   --blue-shade: #027FCC;
+  --blue-thin: #BDE9FF;
+  --blue-soft: rgb(236, 248, 255);
+  --blue-hard: rgb(37, 92, 159);
   --gray: #DEDEDE;
   --grey: #9A9A9A;
   --black: #111111;
@@ -13,6 +16,8 @@
   --orange-shade: #ef6c00;
   --red: #b40000;
   --red-shade: #7d0000;
+  --green: #4caf50;
+  --green-shade: #306c32;
 }
 
 * {
@@ -83,4 +88,13 @@ p, h1, h2, h3, h4, h5, h6 {
 a {
   text-decoration: none;
   color: var(--black);
+}
+
+/*
+ 11. Flex
+*/
+
+.flex {
+  display: flex;
+  align-items: center;
 }

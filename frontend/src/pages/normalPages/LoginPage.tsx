@@ -6,6 +6,7 @@ import { Link, useNavigate } from "react-router-dom";
 import ReCAPTCHA from "react-google-recaptcha";
 import axios from "axios";
 import LoadingPopup from "../../components/LoadingPopup";
+import ErrorMessage from "../../components/ErrorMessage";
 
 export interface ILoginData {
   email: string;
@@ -86,11 +87,6 @@ const OTPButton = styled.button`
   }
 `;
 
-const ErrorDiv = styled.div`
-  color: red;
-  font-size: 0.875rem;
-`;
-
 const Border = styled.div`
   display: flex;
   justify-content: space-around;
@@ -118,6 +114,7 @@ const PasswordLink = styled.button`
   margin: 0.5rem 0;
   color: var(--blue);
   font-size: 0.875rem;
+  cursor: pointer;
 
   &:hover {
     text-decoration: underline;
@@ -128,6 +125,7 @@ const LoginPage = () => {
   const navigate = useNavigate();
   const [isPasswordVisible, setIsPasswordVisible] = useState<boolean>(false);
   const [error, setError] = useState<string>("");
+  const [recaptchaKey, setRecaptchaKey] = useState<number>(1);
 
   const recaptcha = useRef<ReCAPTCHA>(null);
 
@@ -159,13 +157,6 @@ const LoginPage = () => {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    const emailRegex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,4}$/;
-
-    if (!emailRegex.test(formData.email)) {
-      console.error("Format email tidak valid");
-      return;
-    }
-
     const captchaValue = recaptcha.current?.getValue();
 
     if (!captchaValue) {
@@ -182,10 +173,13 @@ const LoginPage = () => {
 
         const data = response.data;
 
+        console.log(data);
+
         if (data.success) {
           try {
             await login(formData);
             setError("");
+            setRecaptchaKey((prevKey) => prevKey + 1);
           } catch (error) {
             console.log("Login error: ", error);
           }
@@ -252,9 +246,12 @@ const LoginPage = () => {
                 value={formData.password}
               />
 
+              <ErrorMessage error={errorMessage} />
+
               <Button type="submit">Login</Button>
 
               <ReCAPTCHA
+                key={recaptchaKey}
                 style={{ marginTop: "1rem" }}
                 ref={recaptcha}
                 sitekey={import.meta.env.VITE_SITE_KEY}
@@ -264,15 +261,13 @@ const LoginPage = () => {
 
           {!isPasswordVisible && (
             <>
-              {error && <ErrorDiv>{error}</ErrorDiv>}
+              <ErrorMessage error={error} />
 
               <Button type="button" onClick={handleNext}>
                 Next
               </Button>
             </>
           )}
-
-          {errorMessage && <ErrorDiv>{errorMessage}</ErrorDiv>}
 
           <Border>
             <hr />

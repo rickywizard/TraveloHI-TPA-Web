@@ -11,7 +11,7 @@ const LoadingOverlay = styled.div`
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
+  z-index: 100;
 `;
 
 const LoadingSpinner = styled.img`
@@ -19,7 +19,7 @@ const LoadingSpinner = styled.img`
   height: 50px;
 `;
 
-const LoadingPopup = ({ isLoading }: { isLoading: boolean }) => {
+const LoadingPopup = ({ isLoading }: { isLoading: boolean | undefined}) => {
   if (!isLoading) {
     return null;
   }

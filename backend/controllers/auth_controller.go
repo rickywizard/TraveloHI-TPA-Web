@@ -9,7 +9,9 @@ import (
 	"net/http"
 	"net/smtp"
 	"net/url"
+	"regexp"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
@@ -23,6 +25,51 @@ const (
 	SecretKey  = "secret"
 	SiteSecret = "6Le7aFkpAAAAAD4tOqdWH8uavxctsAffRDx1U7pu"
 )
+
+func isValidPassword(password string) bool {
+	// Persyaratan password: minimal 1 huruf kapital, 1 huruf kecil, 1 angka, 1 simbol, panjang 8-30 karakter
+	hasUpperCase := false
+	hasLowerCase := false
+	hasDigit := false
+	hasSymbol := false
+
+	symbols := "!@#$%^&*()-_+="
+
+	for _, char := range password {
+		switch {
+		case 'A' <= char && char <= 'Z':
+			hasUpperCase = true
+		case 'a' <= char && char <= 'z':
+			hasLowerCase = true
+		case '0' <= char && char <= '9':
+			hasDigit = true
+		case strings.ContainsRune(symbols, char):
+			hasSymbol = true
+		}
+	}
+
+	return hasUpperCase && hasLowerCase && hasDigit && hasSymbol && (8 <= len(password) && len(password) <= 30)
+}
+
+func containsSymbolOrDigit(s string) bool {
+	for _, char := range s {
+		if (char >= '0' && char <= '9') || (char >= 33 && char <= 47) || (char >= 58 && char <= 64) || (char >= 91 && char <= 96) || (char >= 123 && char <= 126) {
+			return true
+		}
+	}
+	return false
+}
+
+func calculateAge(birthdate time.Time) int {
+	now := time.Now()
+	age := now.Year() - birthdate.Year()
+	if now.YearDay() < birthdate.YearDay() {
+		age--
+	}
+	return age
+}
+
+// ---------------------------------------------------
 
 func SendSuccessMail(recipientEmail string) error {
 	smtpHost := "smtp.gmail.com"
@@ -52,7 +99,71 @@ func Register(ctx *fiber.Ctx, db *gorm.DB) error {
 	var data map[string]interface{}
 
 	if err := ctx.BodyParser(&data); err != nil {
-		return err
+		return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Invalid request body",
+		})
+	}
+
+	// Validasi field yang tidak boleh kosong
+	requiredFields := map[string]string{
+		"first_name":        "Nama depan",
+		"last_name":         "Nama belakang",
+		"email":             "Email",
+		"password":          "Password",
+		"date_of_birth":     "Tanggal lahir",
+		"gender":            "Gender",
+		"security_question": "Pertanyaan keamanan",
+		"security_answer":   "Jawaban pertanyaan keamanan",
+	}
+
+	for _, field := range requiredFields {
+		if val, ok := data[field]; !ok || val == "" {
+			return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"error": fmt.Sprintf("%s cannot be empty", field),
+			})
+		}
+	}
+
+	// Validasi first_name dan last_name
+	for _, field := range map[string]string{
+		"first_name": "Nama depan",
+		"last_name":  "Nama belakang",
+	} {
+		value, ok := data[field].(string)
+		if !ok || len(value) <= 5 || containsSymbolOrDigit(value) {
+			return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"error": fmt.Sprintf("%s must be longer than 5 characters and should not contain symbols or digits", field),
+			})
+		}
+	}
+
+	// Validasi umur lebih dari 17 tahun
+	dateOfBirth, err := time.Parse("2006-01-02", data["date_of_birth"].(string))
+	if err != nil {
+		return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Invalid date of birth format. Use 'yyyy-mm-dd'",
+		})
+	}
+	minimumAge := 17
+	if age := calculateAge(dateOfBirth); age <= minimumAge {
+		return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": fmt.Sprintf("Age must be greater than %d years", minimumAge),
+		})
+	}
+
+	// Validasi password memenuhi kriteria tertentu
+	if !isValidPassword(data["password"].(string)) {
+		return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Invalid password format. It must contain at least 1 uppercase letter, 1 lowercase letter, 1 digit, 1 symbol, and be 8-30 characters long.",
+		})
+	}
+
+	// Validasi email
+	emailRegex := regexp.MustCompile(`^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-z]{2,4}$`)
+	if !emailRegex.MatchString(data["email"].(string)) {
+		return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Invalid email format. Use [email name]@[domain].com",
+		})
 	}
 
 	// Cek apakah email sudah ada dalam database
@@ -60,7 +171,7 @@ func Register(ctx *fiber.Ctx, db *gorm.DB) error {
 	if err := db.Where("email = ?", data["email"].(string)).First(&existingUser).Error; err == nil {
 		// Jika email sudah ada, kirim respons bahwa email harus unik
 		return ctx.Status(fiber.StatusConflict).JSON(fiber.Map{
-			"message": "Email must be unique. Choose a different email.",
+			"error": "Email must be unique. Choose a different email.",
 		})
 	}
 
@@ -87,7 +198,8 @@ func Register(ctx *fiber.Ctx, db *gorm.DB) error {
 		SecurityQuestion:  data["security_question"].(string),
 		SecurityAnswer:    data["security_answer"].(string),
 		IsSubscriber:      data["is_subscriber"].(bool),
-		IsActive:          data["is_active"].(bool),
+		IsActive:          true,
+		IsLoggedIn:        false,
 		OTPDataID:         otpDataID,
 		CreatedAt:         time.Now(),
 		UpdatedAt:         time.Now(),
@@ -95,10 +207,10 @@ func Register(ctx *fiber.Ctx, db *gorm.DB) error {
 
 	db.Create(&user)
 
-	err := SendSuccessMail(data["email"].(string))
+	err = SendSuccessMail(data["email"].(string))
 	if err != nil {
 		return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"message": "Error sending email.",
+			"error": "Error sending email.",
 		})
 	}
 
@@ -114,19 +226,34 @@ func Login(ctx *fiber.Ctx, db *gorm.DB) error {
 		return err
 	}
 
+	// Validasi email
+	emailRegex := regexp.MustCompile(`^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.com$`)
+	if !emailRegex.MatchString(data["email"]) {
+		return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Invalid email format. Use [email name]@[domain].com",
+		})
+	}
+
 	var user models.User
 
 	db.Where("email = ?", data["email"]).First(&user)
 
 	if user.ID == 0 || bcrypt.CompareHashAndPassword(user.Password, []byte(data["password"])) != nil {
 		return ctx.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-			"message": "Wrong credentials",
+			"error": "Wrong credentials",
 		})
 	}
 
 	if !user.IsActive {
 		return ctx.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-			"message": "Account is not active",
+			"error": "Account is not active",
+		})
+	}
+
+	// Jika pengguna sudah login, kembalikan respons user sudah login
+	if user.IsLoggedIn {
+		return ctx.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "User is already logged in",
 		})
 	}
 
@@ -140,7 +267,7 @@ func Login(ctx *fiber.Ctx, db *gorm.DB) error {
 	if err != nil {
 		ctx.Status(fiber.StatusInternalServerError)
 		return ctx.JSON(fiber.Map{
-			"message": "Could not login",
+			"error": "Could not login",
 		})
 	}
 
@@ -152,6 +279,12 @@ func Login(ctx *fiber.Ctx, db *gorm.DB) error {
 	}
 
 	ctx.Cookie(&cookie)
+
+	if err := db.Model(&user).Update("is_logged_in", true).Error; err != nil {
+		return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "Failed to logged in, try again later.",
+		})
+	}
 
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{
 		"message": "Login success",
@@ -172,7 +305,7 @@ func User(ctx *fiber.Ctx, db *gorm.DB) error {
 	if err != nil {
 		ctx.Status(fiber.StatusUnauthorized)
 		return ctx.JSON(fiber.Map{
-			"message": "Unauthenticated",
+			"error": "Unauthenticated",
 		})
 	}
 
@@ -185,7 +318,38 @@ func User(ctx *fiber.Ctx, db *gorm.DB) error {
 	return ctx.Status(fiber.StatusOK).JSON(user)
 }
 
-func Logout(ctx *fiber.Ctx) error {
+func Logout(ctx *fiber.Ctx, db *gorm.DB) error {
+	// Cari user dengan jwt
+	tokenCookie := ctx.Cookies("jwt")
+
+	token, err := jwt.ParseWithClaims(
+		tokenCookie,
+		&jwt.StandardClaims{},
+		func(token *jwt.Token) (interface{}, error) {
+			return []byte(SecretKey), nil
+		},
+	)
+
+	if err != nil {
+		ctx.Status(fiber.StatusUnauthorized)
+		return ctx.JSON(fiber.Map{
+			"error": "Unauthenticated",
+		})
+	}
+
+	claims := token.Claims.(*jwt.StandardClaims)
+
+	var user models.User
+
+	db.Where("id = ?", claims.Issuer).First(&user)
+
+	if err := db.Model(&user).Update("is_logged_in", false).Error; err != nil {
+		return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "Failed to logout, try again later.",
+		})
+	}
+
+	// Buat jwt jadi expired
 	cookie := fiber.Cookie{
 		Name:     "jwt",
 		Value:    "",
@@ -340,7 +504,14 @@ func VerifyOTP(ctx *fiber.Ctx, db *gorm.DB) error {
 	var user models.User
 	if err := db.Where("email = ?", data["email"]).First(&user).Error; err != nil {
 		return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"message": "User not found",
+			"error": "User not found",
+		})
+	}
+
+	// Jika pengguna sudah login, kembalikan respons user sudah login
+	if user.IsLoggedIn {
+		return ctx.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "User is already logged in",
 		})
 	}
 
@@ -348,14 +519,14 @@ func VerifyOTP(ctx *fiber.Ctx, db *gorm.DB) error {
 	var otpData models.OTPData
 	if err := db.Where("id = ?", user.OTPDataID).First(&otpData).Error; err != nil {
 		return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"message": "Error retrieving OTP data, try again later.",
+			"error": "Error retrieving OTP data, try again later.",
 		})
 	}
 
 	// Periksa apakah OTP sesuai
 	if data["otp"] != otpData.OTP || time.Now().After(otpData.ExpiryTime) {
 		return ctx.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-			"message": "Invalid OTP or OTP has expired",
+			"error": "Invalid OTP or OTP has expired",
 		})
 	}
 
@@ -368,7 +539,7 @@ func VerifyOTP(ctx *fiber.Ctx, db *gorm.DB) error {
 	token, err := claims.SignedString([]byte(SecretKey))
 	if err != nil {
 		return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"message": "Could not generate JWT token",
+			"error": "Could not generate JWT token",
 		})
 	}
 
@@ -380,6 +551,12 @@ func VerifyOTP(ctx *fiber.Ctx, db *gorm.DB) error {
 		HTTPOnly: true,
 	}
 	ctx.Cookie(&cookie)
+
+	if err := db.Model(&user).Update("otp_data_id", 1).Update("is_logged_in", true).Error; err != nil {
+		return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "Error updating user data, try again later.",
+		})
+	}
 
 	if err := db.Delete(&otpData).Error; err != nil {
 		return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
@@ -480,6 +657,20 @@ func UpdatePassword(ctx *fiber.Ctx, db *gorm.DB) error {
 		})
 	}
 
+	// Validasi password memenuhi kriteria tertentu
+	if !isValidPassword(newPassword) {
+		return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Invalid password format. It must contain at least 1 uppercase letter, 1 lowercase letter, 1 digit, 1 symbol, and be 8-30 characters long.",
+		})
+	}
+
+	// Validasi agar password baru tidak sama dengan password lama
+	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(newPassword)); err == nil {
+		return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "New password must be different from the current password",
+		})
+	}
+
 	// Hash password baru dengan bcrypt
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
 	if err != nil {
@@ -499,4 +690,29 @@ func UpdatePassword(ctx *fiber.Ctx, db *gorm.DB) error {
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{
 		"message": "Password updated successfully, please login",
 	})
+}
+
+func GetUserID(ctx *fiber.Ctx, db *gorm.DB) uint {
+	cookie := ctx.Cookies("jwt")
+
+	token, err := jwt.ParseWithClaims(
+		cookie,
+		&jwt.StandardClaims{},
+		func(token *jwt.Token) (interface{}, error) {
+			return []byte(SecretKey), nil
+		},
+	)
+
+	if err != nil {
+		ctx.Status(fiber.StatusUnauthorized)
+		return 0
+	}
+
+	claims := token.Claims.(*jwt.StandardClaims)
+
+	var user models.User
+
+	db.Where("id = ?", claims.Issuer).First(&user)
+
+	return user.ID
 }

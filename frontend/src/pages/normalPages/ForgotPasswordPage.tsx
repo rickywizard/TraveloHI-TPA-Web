@@ -3,6 +3,8 @@ import InputField from "../../components/InputField";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import axios from "axios";
+import LoadingPopup from "../../components/LoadingPopup";
+import ErrorMessage from "../../components/ErrorMessage";
 
 export interface IForgotPasswordData {
   email: string;
@@ -66,11 +68,6 @@ const Text = styled.p`
   font-weight: bold;
 `;
 
-const ErrorDiv = styled.div`
-  color: red;
-  font-size: 0.875rem;
-`;
-
 const BackLogin = styled.button`
   background: transparent;
   outline: 0;
@@ -78,6 +75,7 @@ const BackLogin = styled.button`
   margin: 0.5rem 0;
   color: var(--blue);
   font-size: 0.875rem;
+  cursor: pointer;
 
   &:hover {
     text-decoration: underline;
@@ -92,7 +90,8 @@ const ForgotPasswordPage = () => {
 
   const [securityQuestion, setSecurityQuestion] = useState<string>("");
   const [securityAnswer, setSecurityAnswer] = useState<string>("");
-  const [error, setError] = useState<string>();
+  const [error, setError] = useState<string>("");
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const [formData, setFormData] = useState<IForgotPasswordData>({
     email: email,
@@ -101,6 +100,7 @@ const ForgotPasswordPage = () => {
 
   useEffect(() => {
     const fetchSecurityQuestion = async () => {
+      setIsLoading(true);
       try {
         const response = await axios.get(
           `http://127.0.0.1:8000/api/get_security_question?email=${email}`
@@ -109,7 +109,9 @@ const ForgotPasswordPage = () => {
         if (response.status === 200) {
           setSecurityQuestion(response.data.security_question);
         }
+        setIsLoading(false);
       } catch (error) {
+        setIsLoading(false);
         if (axios.isAxiosError(error)) {
           console.error(
             "Failed to fetch security question",
@@ -134,6 +136,7 @@ const ForgotPasswordPage = () => {
   };
 
   const handleCheckAnswer = async () => {
+    setIsLoading(true);
     try {
       const response = await axios.post(
         "http://127.0.0.1:8000/api/check_security_answer",
@@ -145,10 +148,13 @@ const ForgotPasswordPage = () => {
       if (response.status === 200) {
         console.log(response.data.message);
         setIsPasswordVisible(true);
+        setError("");
+        setIsLoading(false);
       }
     } catch (error) {
+      setIsLoading(false);
       if (axios.isAxiosError(error)) {
-        console.error("Failed to answer", error.response?.data.error);
+        // console.error("Failed to answer", error.response?.data.error);
         setError(error.response?.data.error);
       }
     }
@@ -157,6 +163,7 @@ const ForgotPasswordPage = () => {
   const handleSubmitPassword = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
+    setIsLoading(true);
     try {
       const response = await axios.post(
         "http://127.0.0.1:8000/api/update_password",
@@ -166,20 +173,20 @@ const ForgotPasswordPage = () => {
       if (response.status === 200) {
         setError("");
         console.log(response.data.message);
+        setIsLoading(false);
         navigate("/login");
       }
     } catch (error) {
+      setIsLoading(false);
       if (axios.isAxiosError(error)) {
-        console.error(
-          "Cannont change password now: ",
-          error.response?.data.error
-        );
+        setError(error.response?.data.error);
       }
     }
   };
 
   return (
     <Container>
+      <LoadingPopup isLoading={isLoading} />
       <FormCard>
         <form onSubmit={handleSubmitPassword}>
           {/* Pertanyaan */}
@@ -194,7 +201,9 @@ const ForgotPasswordPage = () => {
             value={securityAnswer}
           />
 
-          {error && <ErrorDiv>{error}</ErrorDiv>}
+          {!isPasswordVisible && (
+            <ErrorMessage error={error} />
+          )}
 
           <AnswerButton type="button" onClick={handleCheckAnswer}>
             Jawab
@@ -211,6 +220,8 @@ const ForgotPasswordPage = () => {
                 handleChange={handleInputChange}
                 value={formData.new_password}
               />
+
+              <ErrorMessage error={error} />
 
               <Button type="submit">Konfirmasi Password Baru</Button>
             </>

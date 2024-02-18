@@ -19,7 +19,7 @@ func Setup(app *fiber.App, db *gorm.DB) {
 	})
 
 	authGroup.Post("/logout", func(ctx *fiber.Ctx) error {
-		if err := controllers.Logout(ctx); err != nil {
+		if err := controllers.Logout(ctx, db); err != nil {
 			return err
 		}
 		return nil
@@ -82,15 +82,103 @@ func Setup(app *fiber.App, db *gorm.DB) {
 		return nil
 	})
 
+	// Cart
+	authGroup.Get("/get_cart", func(ctx *fiber.Ctx) error {
+		if err := controllers.GetAllCart(ctx, db); err != nil {
+			return err
+		}
+		return nil
+	})
+
+	authGroup.Post("/add_hotel_cart", func(ctx *fiber.Ctx) error {
+		if err := controllers.AddHotelCart(ctx, db); err != nil {
+			return err
+		}
+		return nil
+	})
+
+	authGroup.Put("/update_hotel_cart/:id", func(ctx *fiber.Ctx) error {
+		if err := controllers.UpdateHotelCart(ctx, db); err != nil {
+			return err
+		}
+		return nil
+	})
+
+	authGroup.Delete("/remove_hotel_cart/:id", func(ctx *fiber.Ctx) error {
+		if err := controllers.RemoveHotelCart(ctx, db); err != nil {
+			return err
+		}
+		return nil
+	})
+
+	// Transaction
+	authGroup.Get("/get_hotel_transactions", func(ctx *fiber.Ctx) error {
+		if err := controllers.GetAllHotelTransaction(ctx, db); err != nil {
+			return err
+		}
+		return nil
+	})
+
+	authGroup.Post("/add_hotel_transaction", func(ctx *fiber.Ctx) error {
+		if err := controllers.AddHotelTransaction(ctx, db); err != nil {
+			return err
+		}
+		return nil
+	})
+
+	authGroup.Get("/get_hotel_transaction_detail/:id", func(ctx *fiber.Ctx) error {
+		if err := controllers.GetHotelTransactionDetail(ctx, db); err != nil {
+			return err
+		}
+		return nil
+	})
+
+	authGroup.Put("/pay_hotel", func(ctx *fiber.Ctx) error {
+		if err := controllers.PayHotel(ctx, db); err != nil {
+			return err
+		}
+		return nil
+	})
+
 	// (admin + user) GET
-	authGroup.Get("/get_promos", func(ctx *fiber.Ctx) error {
+	app.Get("/api/get_promos", func(ctx *fiber.Ctx) error {
 		if err := controllers.GetPromos(ctx, db); err != nil {
 			return err
 		}
 		return nil
 	})
 
-	// admin
+	app.Get("/api/get_hotels", func(ctx *fiber.Ctx) error {
+		if err := controllers.GetHotels(ctx, db); err != nil {
+			return err
+		}
+		return nil
+	})
+
+	app.Get("/api/get_hotel_detail/:id", func(ctx *fiber.Ctx) error {
+		if err := controllers.GetHotelDetail(ctx, db); err != nil {
+			return err
+		}
+		return nil
+	})
+
+	app.Post("/api/sum_hotel_subprice", func(ctx *fiber.Ctx) error {
+		if err := controllers.SumHotelSubPrice(ctx, db); err != nil {
+			return err
+		}
+		return nil
+	})
+
+	// ADMIN
+	// blast newsletter email
+	authGroup.Post("/send_newsletter", func(ctx *fiber.Ctx) error {
+		if err := controllers.SendNewsLetter(ctx, db); err != nil {
+			return err
+		}
+		return nil
+	})
+
+	// manage users
 	authGroup.Get("/get_users", func(ctx *fiber.Ctx) error {
 		if err := controllers.GetAllUser(ctx, db); err != nil {
 			return err
@@ -105,6 +193,22 @@ func Setup(app *fiber.App, db *gorm.DB) {
 		return nil
 	})
 
+	// manage hotels
+	authGroup.Post("/add_hotel", func(ctx *fiber.Ctx) error {
+		if err := controllers.CreateHotel(ctx, db); err != nil {
+			return err
+		}
+		return nil
+	})
+
+	authGroup.Post("/add_room/:id", func(ctx *fiber.Ctx) error {
+		if err := controllers.CreateRoom(ctx, db); err != nil {
+			return err
+		}
+		return nil
+	})
+
+	// manage promos
 	authGroup.Post("/add_promo", func(ctx *fiber.Ctx) error {
 		if err := controllers.CreatePromo(ctx, db); err != nil {
 			return err

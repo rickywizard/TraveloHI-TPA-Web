@@ -58,7 +58,7 @@ const Aside = styled.aside<{ $isSidebarVisible: boolean }>`
   // position: fixed;
   top: 0;
   left: 0;
-  width: ${({ $isSidebarVisible }) => ($isSidebarVisible ? "19rem" : "4rem")};
+  width: ${({ $isSidebarVisible }) => ($isSidebarVisible ? "18rem" : "4rem")};
   height: 100%;
   background: var(--white);
   transition: width 0.4s;
@@ -118,7 +118,7 @@ const NavButton: FC<ButtonProps> = ({ onClick, name, icon, isActive }) => {
 };
 
 const BackButton = styled.button`
-  width: 260px;
+  width: 18rem;
   height: 3rem;
   font-family: inherit;
   font-size: 16px;
@@ -140,7 +140,7 @@ const BackButton = styled.button`
 `;
 
 const LogoutButton = styled.button`
-  width: 260px;
+  width: 18rem;
   height: 3rem;
   font-family: inherit;
   font-size: 16px;

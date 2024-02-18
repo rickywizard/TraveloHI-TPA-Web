@@ -3,19 +3,31 @@ import Footer from "../components/Footer";
 import NavBar from "../components/NavBar";
 import { IChildren } from "../interfaces/children-interface";
 
-const Main = styled.main`
-  background-color: var(--gray);
-  height: 100vh;
+const Template = styled.div`
   width: 100%;
+`;
+
+const InnerTemplate = styled.div`
+  width: 100%;
+  min-height: 100vh;
+`;
+
+const Main = styled.main`
+  background-color: var(--white);
+  max-width: 1024px;
+  padding: 0 1.5rem;
+  margin: 0 auto;
 `;
 
 const MainLayout = ({ children }: IChildren) => {
   return (
-    <>
-      <NavBar />
-      <Main>{children}</Main>
-      <Footer />
-    </>
+    <Template className="center">
+      <InnerTemplate>
+        <NavBar />
+        <Main>{children}</Main>
+        <Footer />
+      </InnerTemplate>
+    </Template>
   );
 };
 
