@@ -1,4 +1,4 @@
-import styled, { css } from "styled-components";
+import styled from "styled-components";
 import background from "../../assets/home1.webp";
 import { useState } from "react";
 import { usePromo } from "../../hooks/usePromo";
@@ -9,8 +9,12 @@ import why4 from "../../assets/why4.webp";
 import { IHotel } from "../../interfaces/hotel-interface";
 import { Link } from "react-router-dom";
 import { useHotel } from "../../hooks/useHotel";
+import { IPromo } from "../../interfaces/promo-interface";
+import PriceDisplay from "../../components/PriceDisplay";
+import { useTheme } from "../../context/ThemeContext";
 
 const HomePage = () => {
+  const { darkMode } = useTheme();
   const { promos } = usePromo();
   const { hotels } = useHotel();
 
@@ -45,13 +49,9 @@ const HomePage = () => {
   return (
     <>
       <Background>
-        <Carousel>
-          {promos.map((promo, index) => (
-            <img key={index} src={promo.image_url} alt={promo.code} />
-          ))}
-        </Carousel>
+        <Carousel promos={promos} />
       </Background>
-      <Why>
+      <Why className={darkMode ? 'dark' : 'light'}>
         <h3>Why book with TraveLoHI?</h3>
         <div className="center" style={{ gap: "2rem" }}>
           {whyData.map((data, index) => (
@@ -64,7 +64,7 @@ const HomePage = () => {
           ))}
         </div>
       </Why>
-      <HotelReccomendation>
+      <HotelReccomendation className={darkMode ? 'dark' : 'light'}>
         <RecommendHead>
           <h4>Hotel Terpopuler</h4>
           <Link to="/hotels">Lihat lebih banyak &gt;</Link>
@@ -84,11 +84,26 @@ const Background = styled.section`
   height: 50vh;
   display: flex;
   align-items: center;
+  overflow: hidden;
+`;
+
+const Why = styled.section`
+  height: 100vh;
+  // background-color: var(--white);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3rem;
+
+  h3 {
+    font-size: 2rem;
+  }
 `;
 
 const HotelReccomendation = styled.section`
   height: 75vh;
-  background-color: var(--white);
+  // background-color: var(--white);
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -115,94 +130,18 @@ const RecommendHead = styled.div`
 
   a:hover {
     color: var(--blue-shade);
+    text-decoration: underline;
   }
 `;
 
-interface HotelCardProps {
-  hotel: IHotel;
-}
-
-const HotelCardContainer = styled.div`
-  border: 1px solid var(--gray);
-  background-color: var(--white);
-  border-radius: 0.5rem;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  width: 15rem;
-  height: 17rem;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  align-items: flex;
-  overflow: hidden;
-`;
-
-const Info = styled.div`
-  padding: 0.5rem;
-`;
-
-const HotelImage = styled.img`
-  width: 100%;
-  height: auto;
-  border-radius: 5px;
-`;
-
-const HotelName = styled.h3`
-  margin-bottom: 1rem;
-`
-
-const ViewButton = styled(Link)`
-  width: 100%;
-  background-color: var(--orange);
-  color: var(--white);
-  padding: 0.5rem 1rem;
-  text-align: center;
-  font-weight: bold;
-  outline: 0;
-  border: 0;
-  border-radius: 5px;
-  text-decoration: none;
-  display: inline-block;
-  cursor: pointer;
-  transition: background-color 0.3s;
-
-  &:hover {
-    background-color: var(--orange-shade);
-  }
-`;
-
-const HotelCard: React.FC<HotelCardProps> = ({ hotel }) => {
-  return (
-    <HotelCardContainer>
-      <HotelImage src={hotel.hotel_images[0].image_url} alt={hotel.name} />
-      <Info>
-        <HotelName>{hotel.name}</HotelName>
-        <ViewButton to={`/hotel/${hotel.id}`}>View Detail</ViewButton>
-      </Info>
-    </HotelCardContainer>
-  );
-};
-
-const Why = styled.section`
-  height: 100vh;
-  background-color: var(--white);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 3rem;
-
-  h3 {
-    font-size: 2rem;
-  }
-`;
-
+// COMPONENT
 interface WhyData {
   image: string;
   subtitle: string;
   content: string;
 }
 
-const WhyCard: React.FC<WhyData> = ({ image, subtitle, content }: WhyData) => {
+const WhyCard = ({ image, subtitle, content }: WhyData) => {
   return (
     <WhyContainer>
       <img src={image} width="100px" />
@@ -234,72 +173,163 @@ const Content = styled.p`
   color: var(--black);
 `;
 
-interface IProps {
-  children: JSX.Element[];
+interface HotelCardProps {
+  hotel: IHotel;
 }
 
-const Carousel = ({ children }: IProps) => {
-  const [currentSlide, setCurrentSlide] = useState<number>(0);
+const HotelCard: React.FC<HotelCardProps> = ({ hotel }) => {
+  const { darkMode } = useTheme();
 
-  const activeSlide = children.map((slide, index) => (
-    <SCarouselSlide $active={currentSlide === index} key={index}>
-      {slide}
-    </SCarouselSlide>
-  ));
+  return (
+    <HotelCardContainer className={darkMode ? 'dark' : 'light'}>
+      <HotelImage src={hotel.hotel_images[0].image_url} alt={hotel.name} />
+      <Info>
+        <HotelName>{hotel.name}</HotelName>
+        <StartingPrice>
+          <p>Harga mulai dari</p>
+          <PriceDisplay price={hotel.starting_price} />
+        </StartingPrice>
+        <ViewButton to={`/hotel/${hotel.id}`}>Lihat Detail</ViewButton>
+      </Info>
+    </HotelCardContainer>
+  );
+};
+
+const HotelCardContainer = styled.div`
+  border: 1px solid var(--gray);
+  // background-color: var(--white);
+  border-radius: 0.5rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  width: 15rem;
+  // height: 21rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: flex;
+  overflow: hidden;
+`;
+
+const Info = styled.div`
+  padding: 0.5rem;
+`;
+
+const HotelImage = styled.img`
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 5px;
+`;
+
+const HotelName = styled.h3`
+  margin-bottom: 0.5rem;
+`;
+
+const StartingPrice = styled.div`
+  margin-bottom: 0.5rem;
+
+  p:nth-child(1) {
+    color: var(--blue);
+    font-size: 0.75rem;
+    font-weight: bold;
+  }
+
+  p:nth-child(2) {
+    color: var(--orange);
+    font-weight: bold;
+    font-size: 1.75rem;
+  }
+`;
+
+const ViewButton = styled(Link)`
+  width: 100%;
+  background-color: transparent;
+  color: var(--blue);
+  padding: 0.5rem 1rem;
+  text-align: center;
+  font-weight: bold;
+  outline: 0;
+  border: 1px solid var(--blue);
+  border-radius: 5px;
+  text-decoration: none;
+  display: inline-block;
+  cursor: pointer;
+  transition: background-color 0.3s;
+
+  &:hover {
+    background-color: var(--gray);
+  }
+`;
+
+interface ICarouselProps {
+  promos: IPromo[];
+}
+
+const Carousel = ({ promos }: ICarouselProps) => {
+  const [currentSlide, setCurrentSlide] = useState<number>(0);
 
   return (
     <div>
-      <SCarouselWrapper>
-        <SCarouselSlides $currentSlide={currentSlide}>
-          {activeSlide}
-        </SCarouselSlides>
-      </SCarouselWrapper>
-      <ButtonGroup>
-        <button
-          onClick={() => {
-            setCurrentSlide(
-              (currentSlide - 1 + activeSlide.length) % activeSlide.length
-            );
+      <CarouselContainer>
+        <SlideContainer
+          style={{
+            transform: `translateX(${-currentSlide * (400 + 8)}px)`,
           }}
         >
-          &lt;
-        </button>
-        <p>Geser untuk lihat promo</p>
-        <button
-          onClick={() => {
-            setCurrentSlide((currentSlide + 1) % activeSlide.length);
-          }}
-        >
-          &gt;
-        </button>
-      </ButtonGroup>
+          {promos.map((promo, index) => (
+            <Slide
+              key={index}
+              src={promo.image_url}
+              alt={`Slide ${index + 1}`}
+            />
+          ))}
+        </SlideContainer>
+        <ButtonGroup>
+          <button
+            onClick={() => {
+              setCurrentSlide(
+                (currentSlide - 1 + promos.length) % promos.length
+              );
+            }}
+          >
+            &lt;
+          </button>
+          <p>Geser untuk lihat promo</p>
+          <button
+            onClick={() => {
+              setCurrentSlide((currentSlide + 1) % promos.length);
+            }}
+          >
+            &gt;
+          </button>
+        </ButtonGroup>
+      </CarouselContainer>
     </div>
   );
 };
 
-const SCarouselWrapper = styled.div`
-  display: flex;
-`;
-
-const SCarouselSlide = styled.div<{ $active?: boolean }>`
-  transition: all 0.5s ease;
+const CarouselContainer = styled.div`
+  overflow: hidden;
   width: 100%;
-
-  img {
-    width: 20rem;
-    border-radius: 5px;
-  }
+  position: relative;
+  margin: 0 0.5rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
 `;
 
-const SCarouselSlides = styled.div<{ $currentSlide: number }>`
+const SlideContainer = styled.div`
   display: flex;
-  gap: 1rem;
-  ${({ $currentSlide }) =>
-    $currentSlide &&
-    css`
-      transform: translateX(-${$currentSlide * 20}rem);
-    `};
-  transition: all 0.5s ease;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  transition: transform 0.5s ease-in-out;
+`;
+
+const Slide = styled.img`
+  width: 100%;
+  max-width: 400px;
+  border-radius: 5px;
 `;
 
 const ButtonGroup = styled.div`

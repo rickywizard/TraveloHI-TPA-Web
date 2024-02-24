@@ -10,6 +10,7 @@
   --gray: #DEDEDE;
   --grey: #9A9A9A;
   --black: #111111;
+  --black-back: #070F2B;
   --black-soft: rgba(28, 41, 48, 1);
   --text: #434343;
   --orange: #f57c00;
@@ -20,6 +21,50 @@
   --green-shade: #306c32;
 }
 
+.light {
+  background-color: var(--white);
+  transition: background-color 0.3s ease, color 0.3s ease;
+  color: var(--black);
+}
+
+.dark {
+  background-color: var(--black-soft);
+  transition: background-color 0.3s ease-in, color 0.3s ease;
+  color: var(--gray);
+}
+.dark button:hover {
+  background-color: var(--black-back);
+  color: var(--gray);
+}
+.dark a:hover {
+  background-color: var(--black-back);
+}
+.dark a:hover > div {
+  background-color: var(--black-back);
+  color: var(--gray);
+}
+.dark p {
+  color: var(--gray);
+}
+.dark h1 {
+  color: var(--gray);
+}
+.dark h2 {
+  color: var(--gray);
+}
+.dark h3 {
+  color: var(--gray);
+}
+.dark h4 {
+  color: var(--gray);
+}
+.dark h5 {
+  color: var(--gray);
+}
+
+/* 
+  Root element
+*/
 * {
   font-family: 'Lato', Arial, Helvetica, sans-serif;
 }

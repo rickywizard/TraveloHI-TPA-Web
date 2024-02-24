@@ -9,6 +9,9 @@ import wallet from "../assets/wallet-solid.svg";
 import debt from "../assets/tag-solid.svg";
 import credit from "../assets/credit-card-solid.svg";
 import cart from "../assets/cart-shopping-solid.svg";
+import theme from "../assets/circle-half-stroke-solid.svg";
+import { useCurrency } from "../context/CurrencyContext";
+import { useTheme } from "../context/ThemeContext";
 
 const Header = styled.header`
   position: sticky;
@@ -19,27 +22,53 @@ const Header = styled.header`
 const Nav = styled.nav`
   width: 100%;
   height: 4.5rem;
-  background-color: var(--white);
+  // background-color: var(--white);
   box-shadow: 0rem 1rem 1rem -1rem var(--grey);
   display: flex;
   padding: 0.25rem;
   align-items: center;
   justify-content: center;
   gap: 1rem;
+
+  @media (max-width: 768px) {
+    .to-hide {
+      display: none;
+    }
+
+    .burger {
+      display: block;
+    }
+
+    .logo {
+      width: 80px;
+    }
+  }
 `;
 
-// const Burger = styled.div`
-//   color: var(--blue);
-//   font-size: 1.5em;
-//   cursor: pointer;
-//   border-radius: 50%;
-//   padding: 0 0.5rem;
-//   transition: 0.3s ease-in;
+const Burger = styled.div`
+  color: var(--blue);
+  font-size: 1.5em;
+  cursor: pointer;
+  border-radius: 50%;
+  padding: 0 0.5rem;
+  transition: 0.3s ease-in;
+  display: none;
 
-//   &:hover {
-//     background: var(--gray);
-//   }
-// `;
+  &:hover {
+    background: var(--gray);
+  }
+`;
+
+const ThemeButton = styled.div`
+  cursor: pointer;
+  border-radius: 50%;
+  padding: 0.5rem;
+  transition: 0.3s ease-in;
+
+  &:hover {
+    background: var(--gray);
+  }
+`;
 
 const SearchBar = styled.div`
   position: relative;
@@ -115,7 +144,7 @@ const Flag = styled.img`
 const AdminButton = styled.button`
   border: none;
   outline: 0;
-  background-color: var(--white);
+  // background-color: var(--white);
   color: var(--blue);
   padding: 0.5rem;
   border-radius: 5px;
@@ -129,6 +158,10 @@ const AdminButton = styled.button`
 
 const Dropdown = styled.div`
   position: relative;
+
+  .dark:hover {
+    background-color: var(--black-back);
+  }
 `;
 
 const DropdownContent = styled.div`
@@ -136,7 +169,7 @@ const DropdownContent = styled.div`
   position: absolute;
   top: 100%;
   left: 0;
-  background-color: white;
+  // background-color: var(--white);
   box-shadow: 1px 4px 8px rgba(0, 0, 0, 0.1);
   padding: 10px;
   z-index: 1;
@@ -158,6 +191,10 @@ const DropdownContent = styled.div`
   .currency:hover {
     background-color: var(--gray);
   }
+
+  .dark {
+    background-color: var(--black-back);
+  }
 `;
 
 const TravelohiPay = styled.div`
@@ -167,7 +204,7 @@ const TravelohiPay = styled.div`
   button {
     outline: 0;
     border: none;
-    background-color: transparent;
+    // background-color: transparent;
     border-radius: 5px;
     transition: 0.3s ease-in;
     padding: 5px;
@@ -202,6 +239,8 @@ const TravelohiPay = styled.div`
 
 const NavBar = () => {
   const { user, logout } = useAuth();
+  const { darkMode, toggleDarkMode } = useTheme();
+  const { setCurrency } = useCurrency();
 
   const [showCurrencyDropdown, setShowCurrencyDropdown] = useState(false);
   const [showPayDropdown, setShowPayDropdown] = useState(false);
@@ -210,7 +249,8 @@ const NavBar = () => {
 
   const handleCurrencyChange = (currency: string) => {
     setSelectedCurrency(currency);
-    setShowCurrencyDropdown(false); // Tutup dropdown setelah memilih mata uang
+    setCurrency(currency);
+    setShowCurrencyDropdown(false);
   };
 
   const handleLogout = async () => {
@@ -223,20 +263,29 @@ const NavBar = () => {
 
   return (
     <Header className="center">
-      <Nav>
+      <Nav className={darkMode ? "dark" : "light"}>
         {user?.is_admin && (
           <Link to="/admin">
-            <AdminButton>Admin Page</AdminButton>
+            <AdminButton className={darkMode ? "dark" : "light"}>
+              Admin
+            </AdminButton>
           </Link>
         )}
 
         {/* burger menu */}
-        {/* <Burger>☰</Burger> */}
+        <Burger className="burger">☰</Burger>
+
+        {/* Theme button */}
+        <ThemeButton onClick={toggleDarkMode}>
+          <img src={theme} alt="❤" width="16px" />
+        </ThemeButton>
 
         {/* logo */}
-        <Link to="/">
-          <img src={logo} alt="TraveLoHI" width="150px" />
-        </Link>
+        <div>
+          <Link to="/" className="logo">
+            <img src={logo} alt="TraveLoHI" width="150px" />
+          </Link>
+        </div>
 
         {/* search bar */}
         <SearchBar>
@@ -244,18 +293,14 @@ const NavBar = () => {
         </SearchBar>
 
         {/* cart */}
-        <Link to="/cart">
+        <Link to="/cart" className="to-hide">
           <Menu>
-            <img
-              src={cart}
-              alt="cart"
-              width="20px"
-            />
+            <img src={cart} alt="cart" width="20px" />
             <p>Keranjang</p>
           </Menu>
         </Link>
         {/* pesanan saya */}
-        <Link to="/my-order">
+        <Link to="/my-order" className="to-hide">
           <Menu>
             <img
               src="https://d1785e74lyxkqq.cloudfront.net/_next/static/v2/8/8c9954122d8006592fbcbd4a82ac994c.svg"
@@ -268,8 +313,9 @@ const NavBar = () => {
         {/* currency */}
         <Dropdown
           onClick={() => setShowCurrencyDropdown(!showCurrencyDropdown)}
+          className="to-hide"
         >
-          <Menu>
+          <Menu className={darkMode ? "dark" : "light"}>
             <Flag
               src={
                 selectedCurrency === "IDR"
@@ -287,7 +333,7 @@ const NavBar = () => {
           </Menu>
 
           {showCurrencyDropdown && (
-            <DropdownContent>
+            <DropdownContent className={darkMode ? "dark" : "light"}>
               <div
                 className="currency"
                 onClick={() => handleCurrencyChange("IDR")}
@@ -319,8 +365,11 @@ const NavBar = () => {
         </Dropdown>
 
         {/* pay */}
-        <Dropdown onClick={() => setShowPayDropdown(!showPayDropdown)}>
-          <Menu>
+        <Dropdown
+          onClick={() => setShowPayDropdown(!showPayDropdown)}
+          className="to-hide"
+        >
+          <Menu className={darkMode ? "dark" : "light"}>
             <img
               src="https://d1785e74lyxkqq.cloudfront.net/_next/static/v2/6/6c5690b014faad362b0d07ebe1e24fdf.svg"
               alt=""
@@ -332,7 +381,7 @@ const NavBar = () => {
             />
           </Menu>
           {showPayDropdown && (
-            <DropdownContent>
+            <DropdownContent className={darkMode ? "dark" : "light"}>
               <p>
                 <b>Payment</b>
               </p>
@@ -352,43 +401,42 @@ const NavBar = () => {
         </Dropdown>
 
         {/* Account things */}
-        {user ? (
-          // profile & logout
-          <AccountContainer>
-            <Link to="/profile">
-              <Menu>
-                <div>
-                  <Profile
-                    src={user.profile_picture_url}
-                    alt="👤"
-                  />
-                </div>
-                <p>
-                  {user.first_name} {user.last_name} <br />
-                  <span>{user.points} pts.</span>
-                </p>
-              </Menu>
-            </Link>
-            <RegisterLogoutButton onClick={handleLogout}>
-              Log out
-            </RegisterLogoutButton>
-          </AccountContainer>
-        ) : (
-          // no user and register
-          <AccountContainer>
-            <Link to="/login">
-              <Menu>
-                <div>
-                  <Profile src={dummy} alt="👤" width="24px" />
-                </div>
-                <p>Log in</p>
-              </Menu>
-            </Link>
-            <Link to="/register">
-              <RegisterLogoutButton>Daftar</RegisterLogoutButton>
-            </Link>
-          </AccountContainer>
-        )}
+        <div className="to-hide">
+          {user ? (
+            // profile & logout
+            <AccountContainer>
+              <Link to="/profile">
+                <Menu>
+                  <div>
+                    <Profile src={user.profile_picture_url} alt="👤" />
+                  </div>
+                  <p>
+                    {user.first_name} {user.last_name} <br />
+                    <span>{user.points} pts.</span>
+                  </p>
+                </Menu>
+              </Link>
+              <RegisterLogoutButton onClick={handleLogout}>
+                Log out
+              </RegisterLogoutButton>
+            </AccountContainer>
+          ) : (
+            // no user and register
+            <AccountContainer>
+              <Link to="/login">
+                <Menu>
+                  <div>
+                    <Profile src={dummy} alt="👤" width="24px" />
+                  </div>
+                  <p>Log in</p>
+                </Menu>
+              </Link>
+              <Link to="/register">
+                <RegisterLogoutButton>Daftar</RegisterLogoutButton>
+              </Link>
+            </AccountContainer>
+          )}
+        </div>
       </Nav>
     </Header>
   );

@@ -105,36 +105,22 @@ func Register(ctx *fiber.Ctx, db *gorm.DB) error {
 	}
 
 	// Validasi field yang tidak boleh kosong
-	requiredFields := map[string]string{
-		"first_name":        "Nama depan",
-		"last_name":         "Nama belakang",
-		"email":             "Email",
-		"password":          "Password",
-		"date_of_birth":     "Tanggal lahir",
-		"gender":            "Gender",
-		"security_question": "Pertanyaan keamanan",
-		"security_answer":   "Jawaban pertanyaan keamanan",
-	}
-
-	for _, field := range requiredFields {
-		if val, ok := data[field]; !ok || val == "" {
-			return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-				"error": fmt.Sprintf("%s cannot be empty", field),
-			})
-		}
+	if data["first_name"] == "" || data["last_name"] == "" || data["email"] == "" || data["password"] == "" || data["date_of_birth"] == "" || data["gender"] == "" || data["security_question"] == "" || data["security_answer"] == "" {
+		return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "All fields cannot be empty",
+		})
 	}
 
 	// Validasi first_name dan last_name
-	for _, field := range map[string]string{
-		"first_name": "Nama depan",
-		"last_name":  "Nama belakang",
-	} {
-		value, ok := data[field].(string)
-		if !ok || len(value) <= 5 || containsSymbolOrDigit(value) {
-			return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-				"error": fmt.Sprintf("%s must be longer than 5 characters and should not contain symbols or digits", field),
-			})
-		}
+	if len(data["first_name"].(string)) < 5 || len(data["last_name"].(string)) < 5 {
+		return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "First name and last name must be at least 5 characters long",
+		})
+	}
+	if containsSymbolOrDigit(data["first_name"].(string)) || containsSymbolOrDigit(data["last_name"].(string)) {
+		return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "First name and last name cannot contain symbols or digits",
+		})
 	}
 
 	// Validasi umur lebih dari 17 tahun
@@ -148,6 +134,28 @@ func Register(ctx *fiber.Ctx, db *gorm.DB) error {
 	if age := calculateAge(dateOfBirth); age <= minimumAge {
 		return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error": fmt.Sprintf("Age must be greater than %d years", minimumAge),
+		})
+	}
+
+	// Validasi gender harus pria dan wanita
+	if data["gender"].(string) != "Pria" && data["gender"].(string) != "Wanita" {
+		return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Gender must be 'Pria' or 'Wanita'",
+		})
+	}
+
+	// Validasi security_question harus salah satu opsi yang diizinkan
+	allowedSecurityQuestions := map[string]bool{
+		"What is your favorite childhood pet's name?":             true,
+		"In which city where you born?":                           true,
+		"What is the name of your favorite book or movie?":        true,
+		"What is the name of the elementary school you attended?": true,
+		"What is the model of your first car?":                    true,
+	}
+
+	if _, ok := allowedSecurityQuestions[data["security_question"].(string)]; !ok {
+		return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Invalid security question",
 		})
 	}
 

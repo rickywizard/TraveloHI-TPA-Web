@@ -149,6 +149,7 @@ const RegisterPage = () => {
   const [readySend, setReadySend] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const recaptcha = useRef<ReCAPTCHA>(null);
+  const [recaptchaKey, setRecaptchaKey] = useState<number>(1);
 
   const [formData, setFormData] = useState<RegisterData>({
     first_name: "",
@@ -199,6 +200,7 @@ const RegisterPage = () => {
     const sendDataToBackend = async () => {
       setIsLoading(true);
       setReadySend(false);
+      setRecaptchaKey((prevKey) => prevKey + 1);
       try {
         const response = await axios.post(
           "http://127.0.0.1:8000/api/register",
@@ -226,7 +228,7 @@ const RegisterPage = () => {
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-  
+
     console.log(formData);
     setReadySend(true);
 
@@ -442,11 +444,12 @@ const RegisterPage = () => {
           <ErrorMessage error={error} />
 
           <ReCAPTCHA
+            key={recaptchaKey}
             style={{ marginTop: "0.5rem" }}
             ref={recaptcha}
             sitekey={import.meta.env.VITE_SITE_KEY}
           />
-          
+
           <Button type="submit">Register</Button>
 
           <Link to="/login">

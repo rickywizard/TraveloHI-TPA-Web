@@ -28,6 +28,7 @@ import CartPage from "./pages/normalPages/CartPage";
 import NormalLayout from "./layouts/NormalLayout";
 import BaseLayout from "./layouts/BaseLayout";
 import MyOrderPage from "./pages/normalPages/MyOrderPage";
+import GamePage from "./pages/normalPages/GamePage";
 
 const App = () => {
   return (
@@ -65,6 +66,7 @@ const App = () => {
             }
           />
 
+          <Route path="/play-game" element={<GamePage />} />
           {/* Protected for logged in user */}
           <Route element={<AuthorizedRoute />}>
             <Route path="/hotel/booking" element={<HotelBookingPage />} />

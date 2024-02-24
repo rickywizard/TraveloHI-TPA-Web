@@ -96,8 +96,23 @@ func GetHotels(ctx *fiber.Ctx, db *gorm.DB) error {
 	var hotels []models.Hotel
 
 	// Mengambil data hotel dari database
-	if err := db.Preload("HotelImages").Preload("Facilities").Find(&hotels).Error; err != nil {
+	if err := db.Preload("Rooms").Preload("HotelImages").Preload("Facilities").Find(&hotels).Error; err != nil {
 		return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to fetch hotels"})
+	}
+	for i := range hotels {
+		// Menghitung harga terendah dari seluruh kamarnya
+		var lowestPrice uint
+		if len(hotels[i].Rooms) > 0 {
+			lowestPrice = hotels[i].Rooms[0].Price
+			for _, room := range hotels[i].Rooms {
+				if room.Price < lowestPrice {
+					lowestPrice = room.Price
+				}
+			}
+		}
+
+		// Menambahkan informasi harga terendah ke dalam hotel
+		hotels[i].StartingPrice = lowestPrice
 	}
 
 	// Mengembalikan daftar hotel sebagai respons
