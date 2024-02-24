@@ -83,10 +83,17 @@ export class Player1 {
   private backkickImages: HTMLImageElement[];
   private lowkickImages: HTMLImageElement[];
   private lowbackkickImages: HTMLImageElement[];
+  private canMove: boolean;
   private framesMax = 0;
   private framesCurrent = 0;
   private framesElapsed = 0;
   private framesHold = 16.67;
+  collisionBox: {
+    x: number;
+    y: number;
+    width: number;
+    height: number
+  };
 
   constructor(
     x: number,
@@ -140,14 +147,41 @@ export class Player1 {
     this.backkickImages = backkickImages.map((img) => importImage(img));
     this.lowkickImages = lowkickImages.map((img) => importImage(img));
     this.lowbackkickImages = lowbackkickImages.map((img) => importImage(img));
+    this.canMove = true;
     this.framesMax = this.getCurrentImage().length;
     this.framesCurrent = 0;
     this.framesElapsed = 0;
     this.framesHold = 16.67;
+    this.collisionBox = {
+      x: this.x,
+      y: this.y,
+      width: this.width,
+      height: this.height
+    }
+  }
+
+  getX(): number {
+    return this.x;
+  }
+
+  setX(x: number) {
+    this.x = x;
+  }
+  
+  getY(): number {
+    return this.y;
+  }
+
+  setY(y: number) {
+    this.y = y;
   }
 
   getHealth(): number {
     return this.health;
+  }
+
+  setHealth(health: number) {
+    this.health = health;
   }
 
   getDamage(): number {
@@ -166,6 +200,14 @@ export class Player1 {
     this.state = state;
   }
 
+  getCanMove(): boolean {
+    return this.canMove;
+  }
+
+  setCanMove(canMove: boolean) {
+    this.canMove = canMove;
+  }
+
   getCurrentImage(): HTMLImageElement[] {
     switch (this.state) {
       case "idle":
@@ -176,7 +218,7 @@ export class Player1 {
         return this.walkingImages;
       case "walkingBack":
         return this.backwardImages;
-      case "jumping":
+      case "jump":
         return this.jumpingImages;
       case "frontkick":
         return this.frontkickImages;
@@ -192,36 +234,29 @@ export class Player1 {
   }
 
   draw(ctx: CanvasRenderingContext2D) {
-    let currentImage = this.getCurrentImage();
+    const currentSprite = this.getCurrentImage();
     const borderWidth = 3;
-
-    ctx.drawImage(
-      currentImage[this.framesCurrent],
-      this.x + borderWidth / 2,
-      this.y + borderWidth / 2,
-      this.width - borderWidth,
-      this.height - borderWidth
-    );
 
     ctx.strokeStyle = "red";
     ctx.lineWidth = borderWidth;
     ctx.strokeRect(this.x, this.y, this.width, this.height);
 
-    ctx.drawImage(
-      currentImage[this.framesCurrent],
-      this.x,
-      this.y,
-      this.width,
-      this.height
-    );
+    let currentImage = currentSprite[this.framesCurrent]
+    if (currentImage instanceof HTMLImageElement) {
+      ctx.drawImage(
+        currentImage,
+        this.x,
+        this.y,
+        this.width,
+        this.height
+      );
+    }
   }
 
   animateFrames() {
     this.framesElapsed++;
 
     if (Math.floor(this.framesElapsed % this.framesHold) === 0) {
-      console.log("move");
-
       if (this.framesCurrent < this.framesMax - 1) {
         this.framesCurrent++;
       } else {

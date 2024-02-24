@@ -20,13 +20,13 @@ import walkMirror1 from "../game-assets/blast impulse/walking/1.png";
 import walkMirror2 from "../game-assets/blast impulse/walking/2.png";
 import walkMirror3 from "../game-assets/blast impulse/walking/3.png";
 
-import frontkick1 from "../game-assets/blast impulse/front kick mirrored/1.png"
-import frontkick2 from "../game-assets/blast impulse/front kick mirrored/2.png"
-import frontkick3 from "../game-assets/blast impulse/front kick mirrored/3.png"
+import frontkick1 from "../game-assets/blast impulse/front kick mirrored/a 1.png"
+import frontkick2 from "../game-assets/blast impulse/front kick mirrored/a 2.png"
+import frontkick3 from "../game-assets/blast impulse/front kick mirrored/a 3.png"
 
-import frontkickMirror1 from "../game-assets/blast impulse/front kick/a 1.png"
-import frontkickMirror2 from "../game-assets/blast impulse/front kick/a 2.png"
-import frontkickMirror3 from "../game-assets/blast impulse/front kick/a 3.png"
+import frontkickMirror1 from "../game-assets/blast impulse/front kick/1.png"
+import frontkickMirror2 from "../game-assets/blast impulse/front kick/2.png"
+import frontkickMirror3 from "../game-assets/blast impulse/front kick/3.png"
 
 import lowkick1 from "../game-assets/blast impulse/low kick mirrored/1.png"
 import lowkick2 from "../game-assets/blast impulse/low kick mirrored/2.png"
@@ -74,10 +74,17 @@ export class Player2 {
   private jumpImages: HTMLImageElement;
   private backImages: HTMLImageElement[];
   private backMirrorImages: HTMLImageElement[];
+  private canMove: boolean;
   private framesMax = 0
   private framesCurrent = 0
   private framesElapsed = 0
   private framesHold = 16.67
+  collisionBox: {
+    x: number;
+    y: number;
+    width: number;
+    height: number
+  };
 
   constructor(
     x: number,
@@ -89,15 +96,15 @@ export class Player2 {
     damage: number = 0,
     idleImages: string[] = [idle1, idle2, idle3, idle4, idle5, idle6],
     mirrorImages: string[] = [mirror1, mirror2, mirror3, mirror4, mirror5, mirror6],
-    walkImages: string[] = [walk1, walk2, walk3],
-    walkMirrorImages: string[] = [walkMirror1, walkMirror2, walkMirror3],
+    walkImages: string[] = [walk1, walk2, walk3, walk1, walk2, walk3],
+    walkMirrorImages: string[] = [walkMirror1, walkMirror2, walkMirror3, walkMirror1, walkMirror2, walkMirror3],
     frontkickImages: string[] = [frontkick1, frontkick2, frontkick3],
     frontkickMirrorImages: string[] = [frontkickMirror1, frontkickMirror2, frontkickMirror3],
     lowkickImages: string[] = [lowkick1, lowkick2, lowkick3, lowkick4],
     lowkickMirrorImages: string[] = [lowkickMirror1, lowkickMirror2, lowkickMirror3, lowkickMirror4],
     jumpImages: string = jump,
-    backImages: string[] = [back1, back2, back3],
-    backMirrorImages: string[] = [backMirrored1, backMirrored2, backMirrored3]
+    backImages: string[] = [back1, back2, back3, back1, back2, back3],
+    backMirrorImages: string[] = [backMirrored1, backMirrored2, backMirrored3, backMirrored1, backMirrored2, backMirrored3]
   ) {
     this.state = state;
     this.x = x;
@@ -114,18 +121,45 @@ export class Player2 {
     this.frontkickMirrorImages = frontkickMirrorImages.map((img) => importImage(img));
     this.lowkickImages = lowkickImages.map((img) => importImage(img));
     this.lowkickMirrorImages = lowkickMirrorImages.map((img) => importImage(img));
-    this.jumpImages = new Image()
-    this.jumpImages.src = jumpImages
+    this.jumpImages = new Image();
+    this.jumpImages.src = jumpImages;
     this.backImages = backImages.map((img) => importImage(img));
     this.backMirrorImages = backMirrorImages.map((img) => importImage(img));
+    this.canMove = true
     this.framesMax = this.getCurrentImage().length
     this.framesCurrent = 0
     this.framesElapsed = 0
     this.framesHold = 16.67
+    this.collisionBox = {
+      x: this.x,
+      y: this.y,
+      width: this.width,
+      height: this.height
+    }
+  }
+
+  getX(): number {
+    return this.x;
+  }
+
+  setX(x: number) {
+    this.x = x;
+  }
+  
+  getY(): number {
+    return this.y;
+  }
+
+  setY(y: number) {
+    this.y = y;
   }
 
   getHealth(): number {
     return this.health
+  }
+
+  setHealth(health: number) {
+    this.health = health;
   }
 
   getDamage(): number {
@@ -142,6 +176,14 @@ export class Player2 {
 
   setState(state: string) {
     this.state = state;
+  }
+
+  getCanMove(): boolean {
+    return this.canMove;
+  }
+
+  setCanMove(canMove: boolean) {
+    this.canMove = canMove;
   }
 
   getCurrentImage(): HTMLImageElement[] {
@@ -163,7 +205,7 @@ export class Player2 {
       case "lowkickMirror":
         return this.lowkickMirrorImages;
       case "jump":
-        return [this.jumpImages];
+        return [this.jumpImages, this.jumpImages, this.jumpImages, this.jumpImages, this.jumpImages];
       case "back":
         return this.backImages;
       case "backMirror":
@@ -174,36 +216,29 @@ export class Player2 {
   }
 
   draw(ctx: CanvasRenderingContext2D) {
-    let currentImage = this.getCurrentImage()
+    const currentSprite = this.getCurrentImage();
     const borderWidth = 3;
-
-    ctx.drawImage(
-      currentImage[this.framesCurrent],
-      this.x + borderWidth / 2,
-      this.y + borderWidth / 2,
-      this.width - borderWidth,
-      this.height - borderWidth
-    );
 
     ctx.strokeStyle = "green";
     ctx.lineWidth = borderWidth;
     ctx.strokeRect(this.x, this.y, this.width, this.height);
 
-    ctx.drawImage(
-      currentImage[this.framesCurrent],
-      this.x,
-      this.y,
-      this.width,
-      this.height
-    );
+    let currentImage = currentSprite[this.framesCurrent]
+    if (currentImage instanceof HTMLImageElement) {
+      ctx.drawImage(
+        currentImage,
+        this.x,
+        this.y,
+        this.width,
+        this.height
+      );
+    }
   }
 
   animateFrames() {
     this.framesElapsed++
 
     if (Math.floor(this.framesElapsed % this.framesHold) === 0) {
-      console.log("move");
-      
       if (this.framesCurrent < this.framesMax - 1) {
         this.framesCurrent++
       } else {
