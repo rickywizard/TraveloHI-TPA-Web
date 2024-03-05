@@ -11,6 +11,7 @@ interface IUserContext {
   login: (loginData: ILoginData) => Promise<void>;
   loginOTP: (loginOTPData: ILoginOTPData) => Promise<void>;
   logout: () => Promise<void>;
+  refetchUserData: () => Promise<void>;
   errorMessage: string | null;
   isLoading: boolean;
 }
@@ -56,6 +57,21 @@ export const AuthProvider = ({ children }: IChildren) => {
       fetchUserData();
     }
   }, [user]);
+
+  const refetchUserData = async () => {
+    try {
+      const response = await axios.get("http://127.0.0.1:8000/api/auth/user", {
+        withCredentials: true,
+      });
+
+      // Simpan data user ke dalam state
+      setUser(response.data);
+      // Simpan data user ke dalam localStorage
+      localStorage.setItem(USER_KEY, JSON.stringify(response.data));
+    } catch (error) {
+      console.error("Failed to fetch user data:", error);
+    }
+  };
 
   const login = async (loginData: ILoginData) => {
     setIsLoading(true);
@@ -131,7 +147,7 @@ export const AuthProvider = ({ children }: IChildren) => {
     localStorage.removeItem(USER_KEY);
   };
 
-  const data = { user, errorMessage, login, loginOTP, logout, isLoading };
+  const data = { user, errorMessage, login, loginOTP, logout, refetchUserData, isLoading };
 
   return <context.Provider value={data}>{children}</context.Provider>;
 };

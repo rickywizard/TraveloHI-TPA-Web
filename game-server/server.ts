@@ -62,7 +62,9 @@ io.on("connection", (socket) => {
 
   // Kirim data sesuai aksi dari player
   socket.on("joinGame", (data: IGameData) => {
-    console.log(`playerId ${data.playerId} posX: ${data.player2x}, posY: ${data.player2y}, action: ${data.action}`);
+    console.log(`playerId ${data.playerId} posX: ${data.player1x}, posY: ${data.player1y}, action: ${data.action}, health: ${data.player1Health}`);
+
+    console.log(`playerId ${data.playerId} posX: ${data.player2x}, posY: ${data.player2y}, action: ${data.action}, health: ${data.player2Health}`);
     
     // BASIC MOVE P1
     if (data.action === "idle" && data.playerId === 1) {
@@ -136,6 +138,122 @@ io.on("connection", (socket) => {
         player2x: data.player2x,
         player2y: data.player2y,
         player2Health: data.player2Health
+      })
+    }
+    // P1 FRONT KICK
+    else if (data.action === "frontKick" && data.playerId === 1) {
+      io.emit("playerAction", {
+        playerId: playerId,
+        action: data.action,
+        player1x: data.player1x,
+        player1y: data.player1y,
+        player1Health: data.player1Health
+      })
+    }
+    else if (data.action === "frontKickMirror" && data.playerId === 1) {
+      io.emit("playerAction", {
+        playerId: playerId,
+        action: data.action,
+        player1x: data.player1x,
+        player1y: data.player1y,
+        player1Health: data.player1Health
+      })
+    }
+    else if (data.action === "dealFrontKickDamage" && data.playerId === 1) {
+      io.emit("playerAction", {
+        playerId: playerId,
+        action: data.action,
+        player1x: data.player1x,
+        player1y: data.player1y,
+        player1Health: data.player1Health,
+        player2Health: data.player2Health - 10
+      })
+    }
+    // P2 FRONT KICK
+    else if (data.action === "frontKick" && data.playerId === 2) {
+      io.emit("playerAction", {
+        playerId: playerId,
+        action: data.action,
+        player2x: data.player2x,
+        player2y: data.player2y,
+        player2Health: data.player2Health
+      })
+    }
+    else if (data.action === "frontKickMirror" && data.playerId === 2) {
+      io.emit("playerAction", {
+        playerId: playerId,
+        action: data.action,
+        player2x: data.player2x,
+        player2y: data.player2y,
+        player2Health: data.player2Health
+      })
+    }
+    else if (data.action === "dealFrontKickDamage" && data.playerId === 2) {
+      io.emit("playerAction", {
+        playerId: playerId,
+        action: data.action,
+        player2x: data.player2x,
+        player2y: data.player2y,
+        player2Health: data.player2Health,
+        player1Health: data.player1Health - 10
+      })
+    }
+    // P1 LOW KICK
+    else if (data.action === "lowKickRight" && data.playerId === 1) {
+      io.emit("playerAction", {
+        playerId: playerId,
+        action: data.action,
+        player1x: data.player1x,
+        player1y: data.player1y,
+        player1Health: data.player1Health
+      })
+    }
+    else if (data.action === "lowKickLeft" && data.playerId === 1) {
+      io.emit("playerAction", {
+        playerId: playerId,
+        action: data.action,
+        player1x: data.player1x,
+        player1y: data.player1y,
+        player1Health: data.player1Health
+      })
+    }
+    else if (data.action === "dealLowKickDamage" && data.playerId === 1) {
+      io.emit("playerAction", {
+        playerId: playerId,
+        action: data.action,
+        player1x: data.player1x,
+        player1y: data.player1y,
+        player1Health: data.player1Health,
+        player2Health: data.player2Health - 15
+      })
+    }
+    // P2 LOW KICK
+    else if (data.action === "lowKickRight" && data.playerId === 2) {
+      io.emit("playerAction", {
+        playerId: playerId,
+        action: data.action,
+        player2x: data.player2x,
+        player2y: data.player2y,
+        player2Health: data.player2Health
+      })
+    }
+    else if (data.action === "lowKickLeft" && data.playerId === 2) {
+      io.emit("playerAction", {
+        playerId: playerId,
+        action: data.action,
+        player2x: data.player2x,
+        player2y: data.player2y,
+        player2Health: data.player2Health
+      })
+    }
+    else if (data.action === "dealLowKickDamage" && data.playerId === 2) {
+      io.emit("playerAction", {
+        playerId: playerId,
+        action: data.action,
+        player2x: data.player2x,
+        player2y: data.player2y,
+        player2Health: data.player2Health,
+        player1Health: data.player1Health - 15
       })
     }
   })

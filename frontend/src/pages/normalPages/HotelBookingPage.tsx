@@ -11,10 +11,13 @@ import axios from "axios";
 import LoadingPopup from "../../components/LoadingPopup";
 import PopMessage from "../../components/PopMessage";
 import RoomImageGrid from "../../components/RoomImageGrid";
-import { useHotelTransactionDetail } from "../../hooks/useHotelTransactionDetail";
+import PriceDisplay from "../../components/PriceDisplay";
 
 interface PaymentData {
-  transaction_id: number;
+  hotel_id: number;
+  room_id: number;
+  check_in: string;
+  check_out: string;
   payment_method: string;
   promo_code: string;
 }
@@ -283,8 +286,6 @@ const TotalPrice = styled.div`
 
 const HotelBookingPage = () => {
   const location = useLocation();
-  const transactionId = location.state.transactionId;
-  const { transaction } = useHotelTransactionDetail(transactionId);
   const { promos } = usePromo();
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -294,25 +295,35 @@ const HotelBookingPage = () => {
   const [showPayDropdown, setShowPayDropdown] = useState<boolean>(false);
   const [showPromoDropdown, setShowPromoDropdown] = useState<boolean>(false);
 
+  const bookingData = location.state.bookingData;
+  const roomData = location.state.room;
+  const originalPrice = location.state.totalPrice;
+  const [totalPrice, setTotalPrice] = useState(location.state.totalPrice);
+
   const [formData, setFormData] = useState<PaymentData>({
-    transaction_id: transactionId,
+    hotel_id: bookingData.hotel_id,
+    room_id: roomData.id,
+    check_in: bookingData.check_in,
+    check_out: bookingData.check_out,
     payment_method: "",
     promo_code: "",
   });
 
   const handlePay = async (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
+    console.log(formData);
+    
     setIsLoading(true);
     setSuccess("");
     setError("");
     try {
-      const response = await axios.put(
-        "http://127.0.0.1:8000/api/auth/pay_hotel",
+      const response = await axios.post(
+        "http://127.0.0.1:8000/api/auth/add_hotel_transaction",
         formData,
         { withCredentials: true }
       );
 
-      if (response.status === 200) {
+      if (response.status === 201) {
         // console.log(response.data.message);
         setIsLoading(false);
         setSuccess(response.data.message);
@@ -338,6 +349,21 @@ const HotelBookingPage = () => {
     }
   }, [success]);
 
+  // Update price display for promo
+  useEffect(() => {
+    if (formData.promo_code) {
+      const selectedPromo = promos.find((promo) => promo.code === formData.promo_code);
+
+      if (selectedPromo) {
+        let discountedPrice;
+
+        discountedPrice = originalPrice - parseInt(selectedPromo.discount);
+
+        setTotalPrice(discountedPrice);
+      }
+    }
+  }, [formData.promo_code])
+
   return (
     <>
       <LoadingPopup isLoading={isLoading} />
@@ -349,18 +375,18 @@ const HotelBookingPage = () => {
           {/* room detail */}
           <p>Room:</p>
           <CardContainer>
-            <RoomImageGrid room={transaction?.room} />
+            <RoomImageGrid room={roomData} />
             <InfoContainer>
               <div>
-                <RoomTitle>{transaction?.room.room_type}</RoomTitle>
+                <RoomTitle>{roomData.room_type}</RoomTitle>
                 <FacilityList>
-                  {transaction?.room.facilities.map((facility: IFacility, index: number) => (
+                  {roomData.facilities.map((facility: IFacility, index: number) => (
                     <FacilityItem key={index}>{facility.name}</FacilityItem>
                   ))}
                 </FacilityList>
               </div>
               <RoomPrice>
-                <p>Rp{transaction?.room.price}</p>
+                <PriceDisplay price={roomData.price} />
                 <p>/ kamar / malam</p>
                 <p>Termasuk pajak</p>
               </RoomPrice>
@@ -369,11 +395,11 @@ const HotelBookingPage = () => {
 
           {/* date detail */}
           <p>
-            Check-in Date: <span className="date">{transaction?.check_in}</span>
+            Check-in Date: <span className="date">{bookingData.check_in}</span>
           </p>
           <p>
             Check-out Date:{" "}
-            <span className="date">{transaction?.check_out}</span>
+            <span className="date">{bookingData.check_out}</span>
           </p>
         </BookingDetails>
         <Others>
@@ -484,10 +510,10 @@ const HotelBookingPage = () => {
         </Others>
         <TotalPrice>
           <p>Total Pembayaran</p>
-          <p>{transaction?.total_price}</p>
+          <PriceDisplay price={totalPrice} />
         </TotalPrice>
         <PaymentButtonContainer>
-          <CancelButton onClick={() => navigate(-1)}>Nanti Dulu Bayarnya</CancelButton>
+          <CancelButton onClick={() => navigate(-1)}>Gak Jadi Booking</CancelButton>
           <PayButton onClick={handlePay}>Bayar Sekarang</PayButton>
         </PaymentButtonContainer>
       </CheckoutContainer>

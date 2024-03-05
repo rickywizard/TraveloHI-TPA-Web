@@ -4,6 +4,7 @@ import "gorm.io/gorm"
 
 func Migrate(db *gorm.DB) {
 	// 1. Drop tabel yang memiliki foreign key dari tabel lain
+	db.Migrator().DropTable(&Search{})
 	db.Migrator().DropTable(&Review{})
 	db.Migrator().DropTable(&HotelCart{})
 	db.Migrator().DropTable(&HotelTransaction{})
@@ -22,6 +23,7 @@ func Migrate(db *gorm.DB) {
 	db.Migrator().DropTable(&Facility{})
 	db.Migrator().DropTable(&Room{})
 	db.Migrator().DropTable(&Hotel{})
+	db.Migrator().DropTable(&BookedSeat{})
 	db.Migrator().DropTable(&Flight{})
 	db.Migrator().DropTable(&Airline{})
 
@@ -41,10 +43,12 @@ func Migrate(db *gorm.DB) {
 
 	db.AutoMigrate(&Hotel{})
 	db.AutoMigrate(&HotelImage{})
+	db.AutoMigrate(&Search{})
 	db.AutoMigrate(&Review{})
 	db.AutoMigrate(&Room{})
 	db.AutoMigrate(&RoomImage{})
 	db.AutoMigrate(&Airline{})
 	db.AutoMigrate(&Flight{})
 	db.AutoMigrate(&Transit{})
+	db.AutoMigrate(&BookedSeat{})
 }

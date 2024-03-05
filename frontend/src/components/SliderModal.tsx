@@ -66,7 +66,7 @@ const ModalNextButton = styled.span`
 `;
 
 const CloseButton = styled.span`
-  color: white;
+  color: var(--white);
   font-size: 3rem;
   position: absolute;
   right: 2rem;

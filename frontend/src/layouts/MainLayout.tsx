@@ -2,6 +2,7 @@ import styled from "styled-components";
 import Footer from "../components/Footer";
 import NavBar from "../components/NavBar";
 import { IChildren } from "../interfaces/children-interface";
+import GameButton from "../components/GameButton";
 
 const Template = styled.div`
   width: 100%;
@@ -25,6 +26,7 @@ const MainLayout = ({ children }: IChildren) => {
       <InnerTemplate>
         <NavBar />
         <Main>{children}</Main>
+        <GameButton />
         <Footer />
       </InnerTemplate>
     </Template>

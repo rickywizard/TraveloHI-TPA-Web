@@ -33,6 +33,14 @@ func CreateHotel(ctx *fiber.Ctx, db *gorm.DB) error {
 		})
 	}
 
+	// Validasi nama hotel unik
+	var existingHotel models.Hotel
+	if err := db.Where("name = ?", requestData.Name).First(&existingHotel).Error; err == nil {
+		return ctx.Status(fiber.StatusConflict).JSON(fiber.Map{
+			"error": "Hotel name must be unique",
+		})
+	}
+
 	// Membuat objek Hotel berdasarkan requestData
 	hotel := models.Hotel{
 		Name:        requestData.Name,
@@ -96,7 +104,7 @@ func GetHotels(ctx *fiber.Ctx, db *gorm.DB) error {
 	var hotels []models.Hotel
 
 	// Mengambil data hotel dari database
-	if err := db.Preload("Rooms").Preload("HotelImages").Preload("Facilities").Find(&hotels).Error; err != nil {
+	if err := db.Preload("Rooms").Preload("HotelImages").Preload("Facilities").Preload("Reviews").Preload("Reviews.User").Find(&hotels).Error; err != nil {
 		return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to fetch hotels"})
 	}
 	for i := range hotels {
@@ -117,6 +125,48 @@ func GetHotels(ctx *fiber.Ctx, db *gorm.DB) error {
 
 	// Mengembalikan daftar hotel sebagai respons
 	return ctx.Status(fiber.StatusOK).JSON(hotels)
+}
+
+func GetPopularHotels(ctx *fiber.Ctx, db *gorm.DB) error {
+	var popularHotels []models.Hotel
+
+	// Menggunakan subquery untuk menghitung jumlah review untuk setiap hotel
+	subquery := db.Model(&models.Review{}).
+		Select("hotel_id, COUNT(*) as review_count").
+		Group("hotel_id").
+		Order("review_count DESC").
+		Limit(5)
+
+	// Mengambil 5 hotel dengan jumlah review terbanyak
+	if err := db.
+		Preload("HotelImages").
+		Preload("Rooms").
+		Joins("LEFT JOIN (?) AS review_counts ON hotels.id = review_counts.hotel_id", subquery).
+		Order("review_counts.review_count DESC").
+		Limit(5).
+		Find(&popularHotels).Error; err != nil {
+		return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "Failed to retrieve popular hotels",
+		})
+	}
+
+	for i := range popularHotels {
+		// Menghitung harga terendah dari seluruh kamarnya
+		var lowestPrice uint
+		if len(popularHotels[i].Rooms) > 0 {
+			lowestPrice = popularHotels[i].Rooms[0].Price
+			for _, room := range popularHotels[i].Rooms {
+				if room.Price < lowestPrice {
+					lowestPrice = room.Price
+				}
+			}
+		}
+
+		// Menambahkan informasi harga terendah ke dalam hotel
+		popularHotels[i].StartingPrice = lowestPrice
+	}
+
+	return ctx.Status(fiber.StatusOK).JSON(popularHotels)
 }
 
 func CreateRoom(ctx *fiber.Ctx, db *gorm.DB) error {
@@ -249,13 +299,53 @@ func GetHotelDetail(ctx *fiber.Ctx, db *gorm.DB) error {
 		}
 	}
 
+	// Hitung rata-rata rating dari ulasan (reviews)
+	var totalCleanRating, totalComfortRating, totalLocationRating, totalServiceRating float32
+	for _, review := range hotel.Reviews {
+		totalCleanRating += review.CleanRating
+		totalComfortRating += review.ComfortRating
+		totalLocationRating += review.LocationRating
+		totalServiceRating += review.ServiceRating
+	}
+
+	// Hitung rata-rata rating tiap kategori
+	var averageCleanRating, averageComfortRating, averageLocationRating, averageServiceRating float32
+	if len(hotel.Reviews) > 0 {
+		averageCleanRating = totalCleanRating / float32(len(hotel.Reviews))
+		averageComfortRating = totalComfortRating / float32(len(hotel.Reviews))
+		averageLocationRating = totalLocationRating / float32(len(hotel.Reviews))
+		averageServiceRating = totalServiceRating / float32(len(hotel.Reviews))
+	}
+
+	// Hitung rata-rata total
+	var totalRatings float32
+	for _, review := range hotel.Reviews {
+		totalRatings += (review.CleanRating + review.ComfortRating + review.LocationRating + review.ServiceRating) / 4
+	}
+
+	// Hitung rata-rata total
+	var averageTotalRating float32
+	if len(hotel.Reviews) > 0 {
+		averageTotalRating = totalRatings / float32(len(hotel.Reviews))
+	}
+
 	// Tambahkan informasi starting_price pada JSON hotel
 	hotelWithStartingPrice := struct {
 		models.Hotel
-		StartingPrice uint `json:"starting_price"`
+		StartingPrice         uint    `json:"starting_price"`
+		AverageCleanRating    float32 `json:"average_clean_rating"`
+		AverageComfortRating  float32 `json:"average_comfort_rating"`
+		AverageLocationRating float32 `json:"average_location_rating"`
+		AverageServiceRating  float32 `json:"average_service_rating"`
+		AverageTotalRating    float32 `json:"average_total_rating"`
 	}{
-		Hotel:         hotel,
-		StartingPrice: startingPrice,
+		Hotel:                 hotel,
+		StartingPrice:         startingPrice,
+		AverageCleanRating:    averageCleanRating,
+		AverageComfortRating:  averageComfortRating,
+		AverageLocationRating: averageLocationRating,
+		AverageServiceRating:  averageServiceRating,
+		AverageTotalRating:    averageTotalRating,
 	}
 
 	// Kirim response dengan detail hotel dan kamar

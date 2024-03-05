@@ -82,6 +82,51 @@ func Setup(app *fiber.App, db *gorm.DB) {
 		return nil
 	})
 
+	// Profile user
+	authGroup.Put("/update_profile", func(ctx *fiber.Ctx) error {
+		if err := controllers.UpdateProfile(ctx, db); err != nil {
+			return err
+		}
+		return nil
+	})
+
+	authGroup.Post("/add_credit_card", func(ctx *fiber.Ctx) error {
+		if err := controllers.AddCreditCard(ctx, db); err != nil {
+			return err
+		}
+		return nil
+	})
+
+	// Search
+	app.Post("/api/save_search", func(ctx *fiber.Ctx) error {
+		if err := controllers.SaveSearch(ctx, db); err != nil {
+			return err
+		}
+		return nil
+	})
+
+	app.Get("/api/get_recent_search", func(ctx *fiber.Ctx) error {
+		if err := controllers.GetRecentSearches(ctx, db); err != nil {
+			return err
+		}
+		return nil
+	})
+
+	app.Get("/api/get_popular_search", func(ctx *fiber.Ctx) error {
+		if err := controllers.GetPopularSearches(ctx, db); err != nil {
+			return err
+		}
+		return nil
+	})
+
+	// Game
+	authGroup.Post("/game_reward", func(ctx *fiber.Ctx) error {
+		if err := controllers.GiveReward(ctx, db); err != nil {
+			return err
+		}
+		return nil
+	})
+
 	// Cart
 	authGroup.Get("/get_cart", func(ctx *fiber.Ctx) error {
 		if err := controllers.GetAllCart(ctx, db); err != nil {
@@ -112,8 +157,15 @@ func Setup(app *fiber.App, db *gorm.DB) {
 	})
 
 	// Transaction
-	authGroup.Get("/get_hotel_transactions", func(ctx *fiber.Ctx) error {
-		if err := controllers.GetAllHotelTransaction(ctx, db); err != nil {
+	authGroup.Get("/get_ongoing_hotel", func(ctx *fiber.Ctx) error {
+		if err := controllers.GetOnGoingHotelTickets(ctx, db); err != nil {
+			return err
+		}
+		return nil
+	})
+
+	authGroup.Get("/get_past_hotel", func(ctx *fiber.Ctx) error {
+		if err := controllers.GetPastHotelTickets(ctx, db); err != nil {
 			return err
 		}
 		return nil
@@ -126,21 +178,35 @@ func Setup(app *fiber.App, db *gorm.DB) {
 		return nil
 	})
 
-	authGroup.Get("/get_hotel_transaction_detail/:id", func(ctx *fiber.Ctx) error {
-		if err := controllers.GetHotelTransactionDetail(ctx, db); err != nil {
+	authGroup.Get("/get_ongoing_flight", func(ctx *fiber.Ctx) error {
+		if err := controllers.GetOnGoingFlightTickets(ctx, db); err != nil {
 			return err
 		}
 		return nil
 	})
 
-	authGroup.Put("/pay_hotel", func(ctx *fiber.Ctx) error {
-		if err := controllers.PayHotel(ctx, db); err != nil {
+	authGroup.Get("/get_past_flight", func(ctx *fiber.Ctx) error {
+		if err := controllers.GetPastFlightTickets(ctx, db); err != nil {
+			return err
+		}
+		return nil
+	})
+
+	authGroup.Post("/add_flight_transaction", func(ctx *fiber.Ctx) error {
+		if err := controllers.AddFlightTransaction(ctx, db); err != nil {
 			return err
 		}
 		return nil
 	})
 
 	// (admin + user) GET
+	app.Get("/api/search", func(ctx *fiber.Ctx) error {
+		if err := controllers.Search(ctx, db); err != nil {
+			return err
+		}
+		return nil
+	})
+
 	app.Get("/api/get_promos", func(ctx *fiber.Ctx) error {
 		if err := controllers.GetPromos(ctx, db); err != nil {
 			return err
@@ -155,6 +221,13 @@ func Setup(app *fiber.App, db *gorm.DB) {
 		return nil
 	})
 
+	app.Get("/api/get_popular_hotels", func(ctx *fiber.Ctx) error {
+		if err := controllers.GetPopularHotels(ctx, db); err != nil {
+			return err
+		}
+		return nil
+	})
+
 	app.Get("/api/get_hotel_detail/:id", func(ctx *fiber.Ctx) error {
 		if err := controllers.GetHotelDetail(ctx, db); err != nil {
 			return err
@@ -162,8 +235,22 @@ func Setup(app *fiber.App, db *gorm.DB) {
 		return nil
 	})
 
-	app.Post("/api/sum_hotel_subprice", func(ctx *fiber.Ctx) error {
-		if err := controllers.SumHotelSubPrice(ctx, db); err != nil {
+	app.Get("/api/get_flights", func(ctx *fiber.Ctx) error {
+		if err := controllers.GetFlights(ctx, db); err != nil {
+			return err
+		}
+		return nil
+	})
+
+	app.Get("/api/get_popular_flights", func(ctx *fiber.Ctx) error {
+		if err := controllers.GetPopularFlights(ctx, db); err != nil {
+			return err
+		}
+		return nil
+	})
+
+	app.Get("/api/get_flight_detail/:id", func(ctx *fiber.Ctx) error {
+		if err := controllers.GetFlightDetail(ctx, db); err != nil {
 			return err
 		}
 		return nil
@@ -188,6 +275,28 @@ func Setup(app *fiber.App, db *gorm.DB) {
 
 	authGroup.Post("/ban_unban_user/:id", func(ctx *fiber.Ctx) error {
 		if err := controllers.BanUnbanUser(ctx, db); err != nil {
+			return err
+		}
+		return nil
+	})
+
+	// manage airlines and flight
+	authGroup.Post("/add_airline", func(ctx *fiber.Ctx) error {
+		if err := controllers.CreateAirline(ctx, db); err != nil {
+			return err
+		}
+		return nil
+	})
+
+	authGroup.Get("/get_airlines", func(ctx *fiber.Ctx) error {
+		if err := controllers.GetAirlines(ctx, db); err != nil {
+			return err
+		}
+		return nil
+	})
+
+	authGroup.Post("/add_flight/:id", func(ctx *fiber.Ctx) error {
+		if err := controllers.CreateFlight(ctx, db); err != nil {
 			return err
 		}
 		return nil

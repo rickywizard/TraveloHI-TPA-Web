@@ -1,3 +1,4 @@
+import { IFlight } from "./flight-interface";
 import { IRoom } from "./hotel-interface";
 
 export interface IHotelTransaction {
@@ -7,6 +8,13 @@ export interface IHotelTransaction {
   check_in: string;
   check_out: string;
   total_price: number;
-  is_expired: boolean;
-  is_paid: boolean;
+}
+
+export interface IFlightTransaction {
+  id: number;
+  flight_id: number;
+  flight: IFlight;
+  seat_number: number;
+  add_luggage: boolean;
+  total_price: number;
 }

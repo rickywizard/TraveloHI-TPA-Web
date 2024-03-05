@@ -1,65 +1,89 @@
 import LoadingPopup from "../../components/LoadingPopup";
 import styled from "styled-components";
-import RoomImageGrid from "../../components/RoomImageGrid";
-import { useHotelTransaction } from "../../hooks/useHotelTransaction";
-import ErrorMessage from "../../components/ErrorMessage";
-import { useNavigate } from "react-router-dom";
+import { useOnGoingHotel } from "../../hooks/useOnGoingHotel";
+import { useOnGoingFlight } from "../../hooks/useOnGoingFlight";
+import HotelTransaction from "../../components/HotelTransaction";
+import FlightTransaction from "../../components/FlightTransaction";
+import { useState } from "react";
 
 const MyOrderPage = () => {
-  const { hotelTransactions, isLoading } = useHotelTransaction();
-  const navigate = useNavigate();
+  const { onGoingHotel, isLoading } = useOnGoingHotel();
+  const { onGoingFlight } = useOnGoingFlight();
 
-  // console.log(hotelTransactions);
-
-  const handleToPayment = (transactionId: number) => {
-    navigate(`/hotel/booking`, { state: { transactionId: transactionId } });
-  };
+  const [activeTab, setActiveTab] = useState("hotels");
 
   return (
     <>
       <LoadingPopup isLoading={isLoading} />
       <MyOrderContainer>
         <h2>Pesanan Saya</h2>
-        {hotelTransactions.map((transaction, index) => (
-          <MyOrderItem key={index}>
-            <RoomImageGrid room={transaction.room} />
-            <InfoContainer>
-              <RoomTitle>{transaction.room.room_type}</RoomTitle>
-              <RoomCartInfo>
-                <CheckDate>
-                  <p>
-                    Check-in Date:{" "}
-                    <span className="date">{transaction?.check_in}</span>
-                  </p>
-                  <p>
-                    Check-out Date:{" "}
-                    <span className="date">{transaction?.check_out}</span>
-                  </p>
-                </CheckDate>
-                <SubPrice>
-                  <p>Rp{transaction.total_price}</p>
-                  <p>Termasuk pajak</p>
-                </SubPrice>
-              </RoomCartInfo>
-              {transaction.is_expired ? (
-                <ErrorMessage error="Transaksi sudah kadaluarsa" />
-              ) : transaction.is_paid ? (
-                <Paid>Transaksi sudah dibayar</Paid>
-              ) : (
-                <ButtonGroup>
-                  <p>Anda belum melakukan pembayaran</p>
-                  <PayButton onClick={() => handleToPayment(transaction.id)}>
-                    Bayar Sekarang
-                  </PayButton>
-                </ButtonGroup>
-              )}
-            </InfoContainer>
-          </MyOrderItem>
-        ))}
+        <Tabs>
+          <TabButton
+            onClick={() => setActiveTab("hotels")}
+            $active={activeTab === "hotels"}
+          >
+            Hotels &emsp;<span>( {onGoingHotel ? onGoingHotel?.length : 0} )</span>
+          </TabButton>
+          <TabButton
+            onClick={() => setActiveTab("flights")}
+            $active={activeTab === "flights"}
+          >
+            Flights &emsp;<span>( {onGoingFlight ? onGoingFlight?.length : 0} )</span>
+          </TabButton>
+        </Tabs>
+
+        {/* Content based on active tab */}
+        <Content>
+          {activeTab === "hotels" && (
+            <HotelTransaction hotelTransactions={onGoingHotel} />
+          )}
+
+          {activeTab === "flights" && (
+            <FlightTransaction flightTransactions={onGoingFlight} />
+          )}
+        </Content>
       </MyOrderContainer>
     </>
   );
 };
+
+const Tabs = styled.div`
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+`;
+
+const TabButton = styled.button<{ $active: boolean }>`
+  width: 50%;
+  background-color: transparent;
+  outline: 0;
+  border: none;
+  border-bottom: ${({ $active }) =>
+    $active ? "3px solid var(--blue)" : "3px solid transparent"};
+  color: var(--text);
+  font-weight: bold;
+  padding: 1rem 0;
+  margin-bottom: 1rem;
+  cursor: pointer;
+
+  span {
+    color: var(--blue);
+  }
+`;
+
+const Content = styled.div`
+  /* Tambahkan gaya sesuai kebutuhan */
+  ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  li {
+    margin-bottom: 10px;
+  }
+`;
 
 const MyOrderContainer = styled.div`
   max-width: 1024px;
@@ -67,103 +91,6 @@ const MyOrderContainer = styled.div`
 
   h2 {
     margin-bottom: 0.5rem;
-  }
-`;
-
-const MyOrderItem = styled.div`
-  display: flex;
-  align-items: center;
-  background-color: var(--white);
-  border-radius: 0.5rem;
-  overflow: hidden;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-  padding: 1rem;
-  margin-bottom: 1rem;
-`;
-
-const InfoContainer = styled.div`
-  width: 60%;
-  padding: 0 1rem;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  gap: 2rem;
-`;
-
-const RoomTitle = styled.h2`
-  font-size: 1.75rem;
-  font-weight: bold;
-  color: var(--text);
-`;
-
-const RoomCartInfo = styled.div`
-  display: flex;
-  justify-content: space-between;
-`;
-
-const CheckDate = styled.div`
-  width: 50%;
-
-  p {
-    color: var(--black);
-  }
-
-  span {
-    color: var(--blue);
-    font-weight: bold;
-  }
-`;
-
-const SubPrice = styled.div`
-  width: 50%;
-  text-align: right;
-  font-weight: bold;
-
-  p:nth-child(1) {
-    font-size: 1.5rem;
-    color: var(--orange-shade);
-  }
-
-  p:nth-child(2) {
-    font-size: 0.75rem;
-    color: var(--blue);
-  }
-`;
-
-const Paid = styled.p`
-  text-align: right;
-  color: var(--green);
-  font-weight: bold;
-`;
-
-const ButtonGroup = styled.div`
-  display: flex;
-  flex-direction: column;
-  align-items: end;
-  gap: 0.5rem;
-
-  p {
-    font-size: 0.75rem;
-    font-weight: bold;
-    color: var(--red);
-  }
-`;
-
-const PayButton = styled.button`
-  background-color: var(--orange);
-  color: var(--white);
-  font-size: 0.875rem;
-  font-weight: bold;
-  padding: 0.6rem 1rem;
-  border: 1px solid var(--orange);
-  border-radius: 5px;
-  box-sizing: border-box;
-  cursor: pointer;
-  transition: 0.3s ease-in-out;
-
-  &:hover {
-    color: var(--orange);
-    background-color: var(--white);
   }
 `;
 

@@ -11,6 +11,11 @@ export interface IHotel {
   rooms: IRoom[];
   reviews: IReview[];
   facilities: IFacility[];
+  average_clean_rating: number;
+  average_comfort_rating: number;
+  average_location_rating: number;
+  average_service_rating: number;
+  average_total_rating: number;
 }
 
 export interface IHoteLImage {
@@ -38,7 +43,10 @@ export interface IRoomImage {
 export interface IReview {
   id: number;
   user: IUser;
-  rating: number;
+  clean_rating: number;
+  comfort_rating: number;
+  location_rating: number;
+  service_rating: number;
   comment_text: string;
 }
 

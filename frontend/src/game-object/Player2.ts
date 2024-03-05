@@ -71,7 +71,7 @@ export class Player2 {
   private frontkickMirrorImages: HTMLImageElement[];
   private lowkickImages: HTMLImageElement[];
   private lowkickMirrorImages: HTMLImageElement[];
-  private jumpImages: HTMLImageElement;
+  private jumpImages: HTMLImageElement[];
   private backImages: HTMLImageElement[];
   private backMirrorImages: HTMLImageElement[];
   private canMove: boolean;
@@ -98,11 +98,11 @@ export class Player2 {
     mirrorImages: string[] = [mirror1, mirror2, mirror3, mirror4, mirror5, mirror6],
     walkImages: string[] = [walk1, walk2, walk3, walk1, walk2, walk3],
     walkMirrorImages: string[] = [walkMirror1, walkMirror2, walkMirror3, walkMirror1, walkMirror2, walkMirror3],
-    frontkickImages: string[] = [frontkick1, frontkick2, frontkick3],
-    frontkickMirrorImages: string[] = [frontkickMirror1, frontkickMirror2, frontkickMirror3],
-    lowkickImages: string[] = [lowkick1, lowkick2, lowkick3, lowkick4],
-    lowkickMirrorImages: string[] = [lowkickMirror1, lowkickMirror2, lowkickMirror3, lowkickMirror4],
-    jumpImages: string = jump,
+    frontkickImages: string[] = [frontkick1, frontkick2, frontkick3, frontkick1, frontkick2, frontkick3],
+    frontkickMirrorImages: string[] = [frontkickMirror1, frontkickMirror2, frontkickMirror3, frontkickMirror1, frontkickMirror2, frontkickMirror3],
+    lowkickImages: string[] = [lowkick1, lowkick2, lowkick3, lowkick4, lowkick3, lowkick2],
+    lowkickMirrorImages: string[] = [lowkickMirror1, lowkickMirror2, lowkickMirror3, lowkickMirror4, lowkickMirror3, lowkickMirror2],
+    jumpImages: string[] = [jump, jump, jump, jump, jump, jump],
     backImages: string[] = [back1, back2, back3, back1, back2, back3],
     backMirrorImages: string[] = [backMirrored1, backMirrored2, backMirrored3, backMirrored1, backMirrored2, backMirrored3]
   ) {
@@ -121,8 +121,7 @@ export class Player2 {
     this.frontkickMirrorImages = frontkickMirrorImages.map((img) => importImage(img));
     this.lowkickImages = lowkickImages.map((img) => importImage(img));
     this.lowkickMirrorImages = lowkickMirrorImages.map((img) => importImage(img));
-    this.jumpImages = new Image();
-    this.jumpImages.src = jumpImages;
+    this.jumpImages = jumpImages.map((img) => importImage(img));
     this.backImages = backImages.map((img) => importImage(img));
     this.backMirrorImages = backMirrorImages.map((img) => importImage(img));
     this.canMove = true
@@ -136,6 +135,10 @@ export class Player2 {
       width: this.width,
       height: this.height
     }
+  }
+
+  getWidth(): number {
+    return this.width
   }
 
   getX(): number {
@@ -205,13 +208,22 @@ export class Player2 {
       case "lowkickMirror":
         return this.lowkickMirrorImages;
       case "jump":
-        return [this.jumpImages, this.jumpImages, this.jumpImages, this.jumpImages, this.jumpImages];
+        return this.jumpImages;
       case "back":
         return this.backImages;
       case "backMirror":
         return this.backMirrorImages;
       default:
         return this.idleImages;
+    }
+  }
+
+  updateCollisionBox() {
+    this.collisionBox = {
+      x: this.x,
+      y: this.y,
+      width: this.width,
+      height: this.height
     }
   }
 

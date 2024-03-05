@@ -33,7 +33,11 @@ const Thumbnail = styled.img`
   cursor: pointer;
 `;
 
-const RoomImageGrid = ({ room }: { room: IRoom | undefined }) => {
+interface ImageGridProps {
+  room: IRoom | undefined
+}
+
+const RoomImageGrid = ({ room }: ImageGridProps) => {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [showModal, setShowModal] = useState<boolean>(false);
   const [currentIndex, setCurrentIndex] = useState<number>(0);

@@ -3,6 +3,7 @@ import NavBar from "../components/NavBar";
 import { IChildren } from "../interfaces/children-interface";
 import Footer from "../components/Footer";
 import { useTheme } from "../context/ThemeContext";
+import GameButton from "../components/GameButton";
 
 const Main = styled.main`
   @media (max-width: 768px) {
@@ -17,6 +18,7 @@ const BaseLayout = ({ children }: IChildren) => {
     <div>
       <NavBar />
       <Main className={darkMode ? 'dark' : 'light'}>{children}</Main>
+      <GameButton />
       <Footer />
     </div>
   );

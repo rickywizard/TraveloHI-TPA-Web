@@ -665,6 +665,13 @@ func UpdatePassword(ctx *fiber.Ctx, db *gorm.DB) error {
 		})
 	}
 
+	// Validasi status IsActive user
+	if !user.IsActive {
+		return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "User is not active",
+		})
+	}
+
 	// Validasi password memenuhi kriteria tertentu
 	if !isValidPassword(newPassword) {
 		return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{

@@ -8,15 +8,21 @@ import why3 from "../../assets/why3.webp";
 import why4 from "../../assets/why4.webp";
 import { IHotel } from "../../interfaces/hotel-interface";
 import { Link } from "react-router-dom";
-import { useHotel } from "../../hooks/useHotel";
 import { IPromo } from "../../interfaces/promo-interface";
 import PriceDisplay from "../../components/PriceDisplay";
 import { useTheme } from "../../context/ThemeContext";
+import { usePopularHotel } from "../../hooks/usePopularHotel";
+import { usePopularFlight } from "../../hooks/usePopularFlight";
+import FlightItem from "../../components/FlightItem";
 
 const HomePage = () => {
   const { darkMode } = useTheme();
   const { promos } = usePromo();
-  const { hotels } = useHotel();
+  const { popularHotels } = usePopularHotel();
+  const { popularFlights } = usePopularFlight();
+
+  // console.log(popularHotels);
+  // console.log(popularFlights);
 
   const whyData = [
     {
@@ -51,7 +57,7 @@ const HomePage = () => {
       <Background>
         <Carousel promos={promos} />
       </Background>
-      <Why className={darkMode ? 'dark' : 'light'}>
+      <Why className={darkMode ? "dark" : "light"}>
         <h3>Why book with TraveLoHI?</h3>
         <div className="center" style={{ gap: "2rem" }}>
           {whyData.map((data, index) => (
@@ -64,15 +70,26 @@ const HomePage = () => {
           ))}
         </div>
       </Why>
-      <HotelReccomendation className={darkMode ? 'dark' : 'light'}>
+      <HotelReccomendation className={darkMode ? "dark" : "light"}>
         <RecommendHead>
           <h4>Hotel Terpopuler</h4>
           <Link to="/hotels">Lihat lebih banyak &gt;</Link>
         </RecommendHead>
-        {hotels.slice(0, 4).map((hotel, index) => (
-          <HotelCard key={index} hotel={hotel} />
-        ))}
+        <Hotels>
+          {popularHotels?.map((hotel, index) => (
+            <HotelCard key={index} hotel={hotel} />
+          ))}
+        </Hotels>
       </HotelReccomendation>
+      <FlightReccomendation className={darkMode ? "dark" : "light"}>
+        <RecommendHead>
+          <h4>Penerbangan Terpopuler</h4>
+          <Link to="/flights">Lihat lebih banyak &gt;</Link>
+        </RecommendHead>
+        {popularFlights?.map((flight, index) => (
+          <FlightItem key={index} flight={flight} />
+        ))}
+      </FlightReccomendation>
     </>
   );
 };
@@ -88,7 +105,7 @@ const Background = styled.section`
 `;
 
 const Why = styled.section`
-  height: 100vh;
+  height: 110vh;
   // background-color: var(--white);
   display: flex;
   flex-direction: column;
@@ -102,11 +119,29 @@ const Why = styled.section`
 `;
 
 const HotelReccomendation = styled.section`
-  height: 75vh;
+  // height: 65vh;
   // background-color: var(--white);
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: start;
+  gap: 1rem;
+  max-width: 1024px;
+  margin: 0 auto;
+`;
+
+const Hotels = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+`;
+
+const FlightReccomendation = styled.section`
+  // height: 65vh;
+  // background-color: var(--white);
+  display: flex;
+  flex-direction: column;
+  justify-content: start;
   gap: 1rem;
   max-width: 1024px;
   margin: 0 auto;
@@ -181,7 +216,7 @@ const HotelCard: React.FC<HotelCardProps> = ({ hotel }) => {
   const { darkMode } = useTheme();
 
   return (
-    <HotelCardContainer className={darkMode ? 'dark' : 'light'}>
+    <HotelCardContainer className={darkMode ? "dark" : "light"}>
       <HotelImage src={hotel.hotel_images[0].image_url} alt={hotel.name} />
       <Info>
         <HotelName>{hotel.name}</HotelName>
@@ -189,8 +224,10 @@ const HotelCard: React.FC<HotelCardProps> = ({ hotel }) => {
           <p>Harga mulai dari</p>
           <PriceDisplay price={hotel.starting_price} />
         </StartingPrice>
-        <ViewButton to={`/hotel/${hotel.id}`}>Lihat Detail</ViewButton>
       </Info>
+      <ButtonContainer>
+        <ViewButton to={`/hotel/${hotel.id}`}>Lihat Detail</ViewButton>
+      </ButtonContainer>
     </HotelCardContainer>
   );
 };
@@ -200,13 +237,13 @@ const HotelCardContainer = styled.div`
   // background-color: var(--white);
   border-radius: 0.5rem;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  width: 15rem;
-  // height: 21rem;
+  width: 12rem;
+  height: 25rem;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
   align-items: flex;
-  overflow: hidden;
+  justify-content: space-between;
+  margin-bottom: 2rem;
 `;
 
 const Info = styled.div`
@@ -215,12 +252,12 @@ const Info = styled.div`
 
 const HotelImage = styled.img`
   width: 100%;
-  height: 100%;
+  height: 12rem;
   object-fit: cover;
   border-radius: 5px;
 `;
 
-const HotelName = styled.h3`
+const HotelName = styled.h4`
   margin-bottom: 0.5rem;
 `;
 
@@ -239,6 +276,10 @@ const StartingPrice = styled.div`
     font-size: 1.75rem;
   }
 `;
+
+const ButtonContainer = styled.div`
+  padding: 0.5rem;
+`
 
 const ViewButton = styled(Link)`
   width: 100%;

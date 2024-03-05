@@ -29,6 +29,16 @@ import NormalLayout from "./layouts/NormalLayout";
 import BaseLayout from "./layouts/BaseLayout";
 import MyOrderPage from "./pages/normalPages/MyOrderPage";
 import GamePage from "./pages/normalPages/GamePage";
+import AdminFlightPage from "./pages/adminPages/AdminFlightPage";
+import AddAirlinePage from "./pages/adminPages/AddAirlinePage";
+import AddFlightPage from "./pages/adminPages/AddFlightPage";
+import ProfilePage from "./pages/normalPages/ProfilePage";
+import SearchPage from "./pages/normalPages/SearchPage";
+import AllHotelsPage from "./pages/normalPages/AllHotelsPage";
+import AllFlightsPage from "./pages/normalPages/AllFlightsPage";
+import FlightDetailPage from "./pages/normalPages/FlightDetailPage";
+import AISearchPage from "./pages/normalPages/AISearchPage";
+import HistoryPage from "./pages/normalPages/HistoryPage";
 
 const App = () => {
   return (
@@ -58,6 +68,30 @@ const App = () => {
           <Route path="/articles" element={<ArticlesPage />} />
           <Route path="/about-us" element={<AboutPage />} />
           <Route
+            path="/search"
+            element={
+              <MainLayout>
+                <SearchPage />
+              </MainLayout>
+            }
+          />
+          <Route
+            path="/ai-search"
+            element={
+              <MainLayout>
+                <AISearchPage />
+              </MainLayout>
+            }
+          />
+          <Route
+            path="/hotels"
+            element={
+              <MainLayout>
+                <AllHotelsPage />
+              </MainLayout>
+            }
+          />
+          <Route
             path="/hotel/:id"
             element={
               <MainLayout>
@@ -65,10 +99,34 @@ const App = () => {
               </MainLayout>
             }
           />
+          <Route
+            path="/flights"
+            element={
+              <MainLayout>
+                <AllFlightsPage />
+              </MainLayout>
+            }
+          />
+          <Route
+            path="/flight/:id"
+            element={
+              <MainLayout>
+                <FlightDetailPage />
+              </MainLayout>
+            }
+          />
 
-          <Route path="/play-game" element={<GamePage />} />
           {/* Protected for logged in user */}
           <Route element={<AuthorizedRoute />}>
+            <Route path="/play-game" element={<GamePage />} />
+            <Route
+              path="/profile"
+              element={
+                <MainLayout>
+                  <ProfilePage />
+                </MainLayout>
+              }
+            />
             <Route path="/hotel/booking" element={<HotelBookingPage />} />
             <Route
               path="/cart"
@@ -83,6 +141,14 @@ const App = () => {
               element={
                 <NormalLayout>
                   <MyOrderPage />
+                </NormalLayout>
+              }
+            />
+            <Route
+              path="/history"
+              element={
+                <NormalLayout>
+                  <HistoryPage />
                 </NormalLayout>
               }
             />
@@ -135,6 +201,30 @@ const App = () => {
               element={
                 <AdminLayout>
                   <AddRoomPage />
+                </AdminLayout>
+              }
+            />
+            <Route
+              path="/admin/airlines"
+              element={
+                <AdminLayout>
+                  <AdminFlightPage />
+                </AdminLayout>
+              }
+            />
+            <Route
+              path="/admin/airlines/add"
+              element={
+                <AdminLayout>
+                  <AddAirlinePage />
+                </AdminLayout>
+              }
+            />
+            <Route
+              path="/admin/airlines/:id/add-flight"
+              element={
+                <AdminLayout>
+                  <AddFlightPage />
                 </AdminLayout>
               }
             />

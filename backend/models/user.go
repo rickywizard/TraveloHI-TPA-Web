@@ -17,7 +17,12 @@ type User struct {
 	IsActive           bool                `json:"is_active"`
 	IsAdmin            bool                `json:"is_admin"`
 	IsLoggedIn         bool                `json:"is_login"`
-	Points             uint                `json:"points"`
+	HIWallet           uint                `json:"hi_wallet"`
+	Phone              string              `json:"phone"`
+	Address            string              `json:"address"`
+	CreditCard         string              `json:"credit_card"`
+	Bank               string              `json:"bank"`
+	SearchHistory      []Search            `gorm:"foreignKey:UserID"`
 	Reviews            []Review            `gorm:"foreignKey:UserID"`
 	HotelCarts         []HotelCart         `gorm:"foreignKey:UserID"`
 	HotelTransactions  []HotelTransaction  `gorm:"foreignKey:UserID"`

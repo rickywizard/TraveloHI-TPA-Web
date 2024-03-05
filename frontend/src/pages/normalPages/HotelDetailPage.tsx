@@ -9,14 +9,17 @@ import SliderModal from "../../components/SliderModal";
 import axios from "axios";
 import PopMessage from "../../components/PopMessage";
 import RoomImageGrid from "../../components/RoomImageGrid";
-import { IFacility, IRoom } from "../../interfaces/hotel-interface";
+import { IFacility, IReview, IRoom } from "../../interfaces/hotel-interface";
+import PriceDisplay from "../../components/PriceDisplay";
 
 interface ChildData {
+  hotel_id: number;
   room: IRoom;
   date: DateData;
 }
 
 export interface BookingData {
+  hotel_id: number;
   room_id: number;
   check_in: string;
   check_out: string;
@@ -125,21 +128,21 @@ const BookingButton = styled.button`
   }
 `;
 
-const RoomCard = ({ room, date }: ChildData) => {
+const RoomCard = ({ hotel_id, room, date }: ChildData) => {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string>("");
   const [success, setSuccess] = useState<string>("");
-  const [transactionId, setTransactionId] = useState<number>(0);
 
   const formData: BookingData = {
+    hotel_id: hotel_id,
     room_id: room.id,
     check_in: date.check_in,
     check_out: date.check_out,
   };
 
   const handleAddToCart = async (e: React.MouseEvent<HTMLButtonElement>) => {
-    e.preventDefault()
+    e.preventDefault();
     console.log("Added to cart", formData);
     setIsLoading(true);
     setSuccess("");
@@ -164,44 +167,24 @@ const RoomCard = ({ room, date }: ChildData) => {
     }
   };
 
-  const handleBooking = async (e: React.MouseEvent<HTMLButtonElement>) => {
-    e.preventDefault();
-    setIsLoading(true);
-    setSuccess("");
-    setError("");
-    try {
-      const response = await axios.post(
-        "http://127.0.0.1:8000/api/auth/add_hotel_transaction",
-        formData,
-        { withCredentials: true }
-      );
+  const handleBooking = () => {
+    // Menghitung selisih hari antara check_in dan check_out
+    const checkInDate = new Date(formData.check_in);
+    const checkOutDate = new Date(formData.check_out);
+    const timeDifference = checkOutDate.getTime() - checkInDate.getTime();
+    const daysDifference = Math.ceil(timeDifference / (1000 * 3600 * 24));
 
-      if (response.status === 201) {
-        // console.log(response.data.message);
-        setIsLoading(false);
-        setSuccess(response.data.message);
-        setTransactionId(response.data.id);
-      }
-    } catch (error) {
-      setIsLoading(false);
-      if (axios.isAxiosError(error)) {
-        setError(error.response?.data.error);
-      }
-    }
+    // Menghitung total harga berdasarkan harga per malam
+    const totalPrice = room.price * daysDifference;
+
+    navigate("/hotel/booking", {
+      state: {
+        bookingData: formData,
+        room: room,
+        totalPrice: totalPrice,
+      },
+    });
   };
-
-  useEffect(() => {
-    if (success && transactionId) {
-      setIsLoading(true);
-      const timeoutId = setTimeout(() => {
-        setIsLoading(false);
-        navigate(`/hotel/booking`, { state: { transactionId: transactionId } });
-      }, 3000);
-
-      // Cleanup the timeout to avoid memory leaks
-      return () => clearTimeout(timeoutId);
-    }
-  }, [success]);
 
   return (
     <>
@@ -216,11 +199,13 @@ const RoomCard = ({ room, date }: ChildData) => {
             <RoomInfo>
               <FacilityList>
                 {room.facilities.map((facility: IFacility, index: number) => (
-                  <RoomFacilityItem key={index}>{facility.name}</RoomFacilityItem>
+                  <RoomFacilityItem key={index}>
+                    {facility.name}
+                  </RoomFacilityItem>
                 ))}
               </FacilityList>
               <RoomPrice>
-                <p>Rp{room.price}</p>
+                <PriceDisplay price={room.price} />
                 <p>/ kamar / malam</p>
                 <p>Termasuk pajak</p>
               </RoomPrice>
@@ -237,6 +222,81 @@ const RoomCard = ({ room, date }: ChildData) => {
         </InfoContainer>
       </CardContainer>
     </>
+  );
+};
+
+interface ModalProps {
+  reviews: IReview[] | undefined;
+  closeModal: () => void;
+}
+
+const ModalReviewContainer = styled.div`
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.3);
+  z-index: 15;
+`;
+
+const ModalReviewContent = styled.div`
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  padding: 1rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  background-color: var(--white);
+  height: 60%;
+  border-radius: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  overflow-y: auto;
+`;
+
+const ModalHead = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+`
+
+const CloseButton = styled.span`
+  font-size: 2rem;
+  cursor: pointer;
+`;
+
+const AllReviewsModal = ({ reviews, closeModal }: ModalProps) => {
+  return (
+    <ModalReviewContainer>
+      <ModalReviewContent>
+        <ModalHead>
+          <h4>Semua Ulasan</h4>
+          <CloseButton onClick={closeModal}>&times;</CloseButton>
+        </ModalHead>
+        {reviews?.map((review, index) => (
+          <Reviews key={index}>
+            <RatingAndUser>
+              <RatingCategory>
+                <p>Cleanliness </p>
+                <span>{review.clean_rating}/10</span>
+                <p>Comfort </p>
+                <span>{review.comfort_rating}/10</span>
+                <p>Location </p>
+                <span>{review.location_rating}/10</span>
+                <p>Service </p>
+                <span>{review.service_rating}/10</span>
+              </RatingCategory>
+              <p>
+                {review.user.first_name} {review.user.last_name}
+              </p>
+            </RatingAndUser>
+            <p>{review.comment_text}</p>
+          </Reviews>
+        ))}
+      </ModalReviewContent>
+    </ModalReviewContainer>
   );
 };
 
@@ -324,7 +384,7 @@ const ImageContainer = styled.div`
 
 const LargeImage = styled.img`
   width: 600px;
-  height: auto;
+  height: 337px;
   border-radius: 8px;
   cursor: pointer;
   margin-bottom: 0.25rem;
@@ -384,6 +444,9 @@ const LeftSide = styled.div`
 `;
 
 const RightSide = styled.div`
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
   overflow: hidden;
   width: 60%;
   background: var(--white);
@@ -407,6 +470,7 @@ const ReviewTitle = styled.div`
     font-weight: bold;
     font-size: 0.875rem;
     color: var(--blue);
+    cursor: pointer;
   }
 
   button:hover {
@@ -432,18 +496,57 @@ const Reviews = styled.div`
   }
 `;
 
+const GeneralReview = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+
+  h5 {
+    font-size: 2.5rem;
+    font-weight: bold;
+    color: var(--blue);
+    padding: 1rem 0.5rem;
+    border-radius: 50%;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+
+  p {
+    font-size: 0.875rem;
+    font-weight: bold;
+  }
+
+  div:nth-child(3) > p {
+    color: var(--blue);
+  }
+`;
+
 const RatingAndUser = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
 
-  span {
-    font-weight: bold;
-    color: var(--blue);
+  p {
+    font-size: 0.875rem;
   }
+`;
+
+const RatingCategory = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
 
   p {
+    font-size: 0.65rem;
+    padding: 0 0.5rem;
+    background-color: var(--gray);
+    border-radius: 1rem;
+  }
+
+  span {
     font-size: 0.75rem;
+    font-weight: bold;
+    color: var(--blue);
   }
 `;
 
@@ -542,6 +645,17 @@ const HotelDetailPage: React.FC = () => {
     return starArray;
   };
 
+  // Modal review
+  const [showReviewModal, setShowReviewModal] = useState(false);
+
+  const openModal = () => {
+    setShowReviewModal(true);
+  };
+
+  const closeModal = () => {
+    setShowReviewModal(false);
+  };
+
   // Modal image slider
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [showModal, setShowModal] = useState<boolean>(false);
@@ -628,7 +742,7 @@ const HotelDetailPage: React.FC = () => {
 
         <HotelHeadSide>
           <p>Harga/kamar/malam mulai dari</p>
-          <p>Rp{hotel?.starting_price}</p>
+          <PriceDisplay price={hotel?.starting_price || 0} />
           <button onClick={handleToRoom}>Pilih Kamar</button>
         </HotelHeadSide>
       </HotelHead>
@@ -694,15 +808,37 @@ const HotelDetailPage: React.FC = () => {
         <RightSide>
           <ReviewTitle>
             <h4>Apa Yang Tamu Katakan Tentang Menginapnya</h4>
-            <button>Lihat Semua Ulasan &gt;</button>
+            <button onClick={openModal}>Lihat Semua Ulasan &gt;</button>
           </ReviewTitle>
+          <GeneralReview>
+            <h5>{hotel?.average_total_rating}</h5>
+            <div>
+              <p>Cleanliness </p>
+              <p>Comfort </p>
+              <p>Location </p>
+              <p>Service</p>
+            </div>
+            <div>
+              <p>{hotel?.average_clean_rating}/10</p>
+              <p>{hotel?.average_comfort_rating}/10</p>
+              <p>{hotel?.average_location_rating}/10</p>
+              <p>{hotel?.average_service_rating}/10</p>
+            </div>
+          </GeneralReview>
           <ReviewContainer>
-            {hotel?.reviews.map((review, index) => (
+            {hotel?.reviews.slice(0, 2).map((review, index) => (
               <Reviews key={index}>
                 <RatingAndUser>
-                  <div>
-                    <span>{review.rating}</span>/10
-                  </div>
+                  <RatingCategory>
+                    <p>Cleanliness </p>
+                    <span>{review.clean_rating}/10</span>
+                    <p>Comfort </p>
+                    <span>{review.comfort_rating}/10</span>
+                    <p>Location </p>
+                    <span>{review.location_rating}/10</span>
+                    <p>Service </p>
+                    <span>{review.service_rating}/10</span>
+                  </RatingCategory>
                   <p>
                     {review.user.first_name} {review.user.last_name}
                   </p>
@@ -747,9 +883,18 @@ const HotelDetailPage: React.FC = () => {
 
         {/* Room */}
         {hotel?.rooms.map((room, index) => (
-          <RoomCard room={room} date={dateData} key={index} />
+          <RoomCard
+            hotel_id={hotel?.id}
+            room={room}
+            date={dateData}
+            key={index}
+          />
         ))}
       </RoomSection>
+
+      {showReviewModal && (
+        <AllReviewsModal reviews={hotel?.reviews} closeModal={closeModal} />
+      )}
 
       {/* Image slider */}
       <SliderModal

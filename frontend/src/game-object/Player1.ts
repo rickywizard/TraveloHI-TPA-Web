@@ -46,10 +46,10 @@ import frontkick2 from "../game-assets/sword impulse/front kick/sword-impulse_02
 import frontkick3 from "../game-assets/sword impulse/front kick/sword-impulse_03.png" 
 import frontkick4 from "../game-assets/sword impulse/front kick/sword-impulse_04.png" 
 
-import backkick1 from "../game-assets/sword impulse/front kick/sword-impulse_01.png"
-import backkick2 from "../game-assets/sword impulse/front kick/sword-impulse_02.png"
-import backkick3 from "../game-assets/sword impulse/front kick/sword-impulse_03.png"
-import backkick4 from "../game-assets/sword impulse/front kick/sword-impulse_04.png"
+import backkick1 from "../game-assets/sword impulse/front kick mirrored/sword-impulse_01.png"
+import backkick2 from "../game-assets/sword impulse/front kick mirrored/sword-impulse_02.png"
+import backkick3 from "../game-assets/sword impulse/front kick mirrored/sword-impulse_03.png"
+import backkick4 from "../game-assets/sword impulse/front kick mirrored/sword-impulse_04.png"
 
 import lowkick1 from "../game-assets/sword impulse/low kick/sword-impulse_01.png"
 import lowkick2 from "../game-assets/sword impulse/low kick/sword-impulse_02.png"
@@ -104,32 +104,14 @@ export class Player1 {
     health: number = 100,
     damage: number = 10,
     idleImages: string[] = [idle1, idle2, idle3, idle4, idle5, idle6],
-    mirrorImages: string[] = [
-      mirror1,
-      mirror2,
-      mirror3,
-      mirror4,
-      mirror5,
-      mirror6,
-    ],
-    walkingImages: string[] = [
-      walking1,
-      walking2,
-      walking3,
-      walking4,
-      walking5,
-      walking6,
-      walking7,
-      walking8,
-      walking9,
-      walking10,
-    ],
+    mirrorImages: string[] = [mirror1, mirror2, mirror3, mirror4, mirror5, mirror6],
+    walkingImages: string[] = [walking1, walking2, walking3, walking4, walking5, walking6, walking7,walking8, walking9, walking10],
     backwardImages: string[] = [backward1, backward2, backward3, backward4, backward4, backward5, backward6, backward7, backward8, backward9, backward10],
     jumpingImages: string[] = [jumping1, jumping2, jumping3, jumping4, jumping5, jumping6],
-    frontkickImages: string[] = [frontkick1, frontkick2, frontkick3, frontkick4],
-    backkickImages: string[] = [backkick1, backkick2, backkick3, backkick4],
-    lowkickImages: string[] = [lowkick1, lowkick2, lowkick3],
-    lowbackkickImages: string[] = [lowbackkick1, lowbackkick2, lowbackkick3]
+    frontkickImages: string[] = [frontkick1, frontkick2, frontkick3, frontkick4, frontkick3, frontkick2],
+    backkickImages: string[] = [backkick1, backkick2, backkick3, backkick4, backkick3, backkick2],
+    lowkickImages: string[] = [lowkick1, lowkick2, lowkick3, lowkick1, lowkick2, lowkick3],
+    lowbackkickImages: string[] = [lowbackkick1, lowbackkick2, lowbackkick3, lowbackkick1, lowbackkick2, lowbackkick3]
   ) {
     this.state = state;
     this.x = x;
@@ -158,6 +140,10 @@ export class Player1 {
       width: this.width,
       height: this.height
     }
+  }
+
+  getWidth(): number {
+    return this.width
   }
 
   getX(): number {
@@ -230,6 +216,15 @@ export class Player1 {
         return this.lowbackkickImages;
       default:
         return this.idleImages;
+    }
+  }
+
+  updateCollisionBox() {
+    this.collisionBox = {
+      x: this.x,
+      y: this.y,
+      width: this.width,
+      height: this.height
     }
   }
 

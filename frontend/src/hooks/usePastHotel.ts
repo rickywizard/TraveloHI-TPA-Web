@@ -2,8 +2,8 @@ import axios from "axios";
 import { useEffect, useState } from "react";
 import { IHotelTransaction } from "../interfaces/transaction-interface";
 
-export const useHotelTransaction = () => {
-  const [hotelTransactions, setHotelTransactions] = useState<
+export const usePastHotel = () => {
+  const [pastHotel, setPastHotel] = useState<
     IHotelTransaction[]
   >([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -12,12 +12,12 @@ export const useHotelTransaction = () => {
     setIsLoading(true);
     try {
       const response = await axios.get(
-        "http://127.0.0.1:8000/api/auth/get_hotel_transactions",
+        "http://127.0.0.1:8000/api/auth/get_past_hotel",
         { withCredentials: true }
       );
 
       if (response.status === 200) {
-        setHotelTransactions(response.data);
+        setPastHotel(response.data);
         setIsLoading(false);
       }
     } catch (error) {
@@ -35,5 +35,5 @@ export const useHotelTransaction = () => {
     fetchHotelTransactions();
   }, []);
 
-  return { hotelTransactions, isLoading, setHotelTransactions };
+  return { pastHotel, isLoading, setPastHotel };
 };

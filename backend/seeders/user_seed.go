@@ -25,7 +25,7 @@ func SeedUser(db *gorm.DB) {
 			IsSubscriber:      true,
 			IsAdmin:           true,
 			IsLoggedIn:        false,
-			Points:            0,
+			HIWallet:          10000000,
 			OTPDataID:         otpData.ID,
 		},
 		{
@@ -42,7 +42,7 @@ func SeedUser(db *gorm.DB) {
 			IsActive:          true,
 			IsAdmin:           false,
 			IsLoggedIn:        false,
-			Points:            0,
+			HIWallet:          10000000,
 			OTPDataID:         otpData.ID,
 		},
 		{
@@ -59,7 +59,7 @@ func SeedUser(db *gorm.DB) {
 			IsActive:          true,
 			IsAdmin:           false,
 			IsLoggedIn:        false,
-			Points:            0,
+			HIWallet:          10000000,
 			OTPDataID:         otpData.ID,
 		},
 		{
@@ -76,7 +76,7 @@ func SeedUser(db *gorm.DB) {
 			IsActive:          true,
 			IsAdmin:           false,
 			IsLoggedIn:        false,
-			Points:            0,
+			HIWallet:          10000000,
 			OTPDataID:         otpData.ID,
 		},
 	}

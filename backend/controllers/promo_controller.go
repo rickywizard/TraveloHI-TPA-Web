@@ -49,20 +49,10 @@ func CreatePromo(ctx *fiber.Ctx, db *gorm.DB) error {
 	}
 
 	// Validasi field tidak boleh kosong
-	requiredFields := map[string]string{
-		"name":         "Name",
-		"code":         "Code",
-		"discount":     "Discount",
-		"expired_date": "Expired Date",
-		"image_url":    "Image",
-	}
-
-	for field, displayName := range requiredFields {
-		if val, ok := data[field]; !ok || val == "" {
-			return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-				"error": fmt.Sprintf("%s cannot be empty", displayName),
-			})
-		}
+	if data["name"] == "" || data["code"] == "" || data["discount"] == "" || data["expired_date"] == "" || data["image_url"] == "" {
+		return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "All fields cannot be empty",
+		})
 	}
 
 	// Validasi promo code tidak duplikat

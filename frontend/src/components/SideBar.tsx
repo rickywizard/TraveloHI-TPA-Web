@@ -25,7 +25,7 @@ const menuItems = [
   {
     name: "Manage Flight",
     icon: 2,
-    route: "/admin/flights",
+    route: "/admin/airlines",
   },
   {
     name: "Manage Promo",

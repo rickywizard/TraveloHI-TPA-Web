@@ -1,17 +1,50 @@
 package controllers
 
 import (
+	"fmt"
 	"strconv"
 	"time"
 
-	"github.com/dgrijalva/jwt-go"
 	"github.com/gofiber/fiber/v2"
 	"github.com/rickywizard/TraveloHI-TPA-Web/backend/models"
 	"gorm.io/gorm"
 )
 
 // HOTEL
-func GetAllHotelTransaction(ctx *fiber.Ctx, db *gorm.DB) error {
+func GetOnGoingHotelTickets(ctx *fiber.Ctx, db *gorm.DB) error {
+	var hotelTransactions []models.HotelTransaction
+
+	// Mendapatkan informasi pengguna dari sesi atau tempat lain
+	userID := GetUserID(ctx, db)
+
+	if err := db.Preload("Room").Preload("Room.RoomImages").
+		Where("user_id = ?", userID).
+		Find(&hotelTransactions).Error; err != nil {
+		return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "Failed to fetch hotel transactions",
+		})
+	}
+
+	// Filter hotelTransactions yang masih berlaku (CheckOut belum melebihi waktu hari ini)
+	var onGoingHotelTransactions []models.HotelTransaction
+	today := time.Now()
+	for _, transaction := range hotelTransactions {
+		checkOutTime, err := time.Parse("2006-01-02", transaction.CheckOut)
+		if err != nil {
+			return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"error": "Failed to parse CheckOut date",
+			})
+		}
+
+		if !checkOutTime.Before(today) {
+			onGoingHotelTransactions = append(onGoingHotelTransactions, transaction)
+		}
+	}
+
+	return ctx.Status(fiber.StatusOK).JSON(onGoingHotelTransactions)
+}
+
+func GetPastHotelTickets(ctx *fiber.Ctx, db *gorm.DB) error {
 	var hotelTransactions []models.HotelTransaction
 
 	// Mendapatkan informasi pengguna dari sesi atau tempat lain
@@ -23,28 +56,31 @@ func GetAllHotelTransaction(ctx *fiber.Ctx, db *gorm.DB) error {
 		return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to fetch hotel transactions"})
 	}
 
-	// Pengecekan waktu expired (30 menit setelah created_at)
+	// Filter hotelTransactions yang sudah berlalu (CheckOut sudah lewat dari tanggal hari ini)
+	var pastHotelTransactions []models.HotelTransaction
+	today := time.Now()
 	for _, transaction := range hotelTransactions {
-		expirationTime := transaction.CreatedAt.Add(30 * time.Minute)
+		checkOutTime, err := time.Parse("2006-01-02", transaction.CheckOut)
+		if err != nil {
+			return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to parse CheckOut date"})
+		}
 
-		if time.Now().After(expirationTime) {
-			// Jika waktu hari ini sudah melewati created_date + 30 menit
-			// Set IsExpired pada transaksi menjadi true
-			transaction.IsExpired = true
-			if err := db.Save(&transaction).Error; err != nil {
-				return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to update transaction expiration"})
-			}
+		if checkOutTime.Before(today) {
+			pastHotelTransactions = append(pastHotelTransactions, transaction)
 		}
 	}
 
-	return ctx.Status(fiber.StatusOK).JSON(hotelTransactions)
+	return ctx.Status(fiber.StatusOK).JSON(pastHotelTransactions)
 }
 
 func AddHotelTransaction(ctx *fiber.Ctx, db *gorm.DB) error {
 	var request struct {
-		RoomID   uint   `json:"room_id"`
-		CheckIn  string `json:"check_in"`
-		CheckOut string `json:"check_out"`
+		HotelID       uint   `json:"hotel_id"`
+		RoomID        uint   `json:"room_id"`
+		CheckIn       string `json:"check_in"`
+		CheckOut      string `json:"check_out"`
+		PaymentMethod string `json:"payment_method"`
+		PromoCode     string `json:"promo_code"`
 	}
 
 	if err := ctx.BodyParser(&request); err != nil {
@@ -53,10 +89,19 @@ func AddHotelTransaction(ctx *fiber.Ctx, db *gorm.DB) error {
 		})
 	}
 
+	// Ambil user
+	userID := GetUserID(ctx, db)
+
 	// Validasi data
 	if request.RoomID == 0 || request.CheckIn == "" || request.CheckOut == "" {
 		return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error": "Room ID, check-in, and check-out are required",
+		})
+	}
+
+	if request.PaymentMethod == "" {
+		return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Payment method is required",
 		})
 	}
 
@@ -81,31 +126,23 @@ func AddHotelTransaction(ctx *fiber.Ctx, db *gorm.DB) error {
 		})
 	}
 
-	// Ambil user
-	cookie := ctx.Cookies("jwt")
-
-	token, err := jwt.ParseWithClaims(
-		cookie,
-		&jwt.StandardClaims{},
-		func(token *jwt.Token) (interface{}, error) {
-			return []byte(SecretKey), nil
-		},
-	)
-
-	if err != nil {
-		ctx.Status(fiber.StatusUnauthorized)
-		return ctx.JSON(fiber.Map{
-			"error": "Unauthenticated",
-		})
+	// Validasi PromoCode
+	if request.PromoCode != "" {
+		var existingTransactions []models.HotelTransaction
+		if err := db.
+			Where("user_id = ? AND promo_code = ?", userID, request.PromoCode).
+			Find(&existingTransactions).Error; err == nil {
+			if len(existingTransactions) > 0 {
+				return ctx.Status(fiber.StatusConflict).JSON(fiber.Map{
+					"error": "Promo Code has already been used",
+				})
+			}
+		} else {
+			return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"error": "Failed to check Promo Code",
+			})
+		}
 	}
-
-	claims := token.Claims.(*jwt.StandardClaims)
-
-	var user models.User
-
-	db.Where("id = ?", claims.Issuer).First(&user)
-
-	userID := user.ID
 
 	// Query untuk mendapatkan informasi room yang dipilih
 	var room models.Room
@@ -128,14 +165,62 @@ func AddHotelTransaction(ctx *fiber.Ctx, db *gorm.DB) error {
 	// Total price
 	totalPrice := CountHotelNightPrice(room.Price, request.CheckIn, request.CheckOut)
 
+	// Discount if there is promo
+	// Validasi PromoCode
+	if request.PromoCode != "" {
+		var promo models.Promo
+		if err := db.Where("code = ?", request.PromoCode).First(&promo).Error; err != nil {
+			return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"error": "Invalid Promo Code",
+			})
+		}
+
+		discount, _ := strconv.Atoi(promo.Discount)
+
+		// Kurangi totalPrice dengan diskon promo
+		totalPrice -= uint(discount)
+	}
+
+	// Query untuk mendapatkan informasi pengguna
+	var user models.User
+	if err := db.First(&user, userID).Error; err != nil {
+		return ctx.Status(fiber.StatusNotFound).JSON(fiber.Map{
+			"error": "User not found",
+		})
+	}
+
+	// Check Available Payment Method
+	// Validasi credit card ada
+	if request.PaymentMethod == "Credit Card" {
+		if user.CreditCard == "" {
+			return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"error": "You have not add credit card",
+			})
+		}
+	} else if request.PaymentMethod == "HI Wallet" {
+		// Validasi HI Wallet
+		if user.HIWallet < totalPrice {
+			return ctx.Status(fiber.StatusForbidden).JSON(fiber.Map{
+				"error": "Insufficient HIWallet balance",
+			})
+		}
+
+		// Mengurangkan saldo HIWallet
+		user.HIWallet -= totalPrice
+		if err := db.Save(&user).Error; err != nil {
+			return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"error": "Failed to update HIWallet balance",
+			})
+		}
+	}
+
 	transaction := models.HotelTransaction{
+		HotelID:    request.HotelID,
 		UserID:     userID,
 		RoomID:     request.RoomID,
 		CheckIn:    request.CheckIn,
 		CheckOut:   request.CheckOut,
 		TotalPrice: totalPrice,
-		IsPaid:     false,
-		IsExpired:  false,
 	}
 
 	if err := db.Create(&transaction).Error; err != nil {
@@ -145,14 +230,67 @@ func AddHotelTransaction(ctx *fiber.Ctx, db *gorm.DB) error {
 	}
 
 	return ctx.Status(fiber.StatusCreated).JSON(fiber.Map{
-		"message": "Hotel booking success, Please pay",
-		"id":      transaction.ID,
+		"message": "Hotel booking success",
 	})
 }
 
-func PayHotel(ctx *fiber.Ctx, db *gorm.DB) error {
+// FLIGHT
+func GetOnGoingFlightTickets(ctx *fiber.Ctx, db *gorm.DB) error {
+	// Ambil user ID dari token atau sesi, sesuai dengan implementasi autentikasi Anda
+	userID := GetUserID(ctx, db)
+
+	// Mengambil transaksi yang belum terbang (tanggal penerbangan lebih besar dari hari ini)
+	var onGoingFlightTickets []models.FlightTransaction
+	if err := db.
+		Preload("Flight.Airline").
+		Where("user_id = ? AND flights.departure_datetime > ?", userID, time.Now()).
+		Joins("JOIN flights ON flight_transactions.flight_id = flights.id").
+		Find(&onGoingFlightTickets).Error; err != nil {
+		return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "Failed to fetch on-going flight tickets",
+		})
+	}
+
+	// Mengembalikan response dengan data transaksi
+	return ctx.Status(fiber.StatusOK).JSON(onGoingFlightTickets)
+}
+
+func GetPastFlightTickets(ctx *fiber.Ctx, db *gorm.DB) error {
+	// Ambil user ID dari token atau sesi, sesuai dengan implementasi autentikasi Anda
+	userID := GetUserID(ctx, db)
+
+	// Mengambil transaksi yang sudah terbang (tanggal penerbangan lebih kecil atau sama dengan hari ini)
+	var pastFlightTickets []models.FlightTransaction
+	if err := db.
+		Preload("Flight.Airline").
+		Where("user_id = ? AND flights.departure_datetime <= ?", userID, time.Now()).
+		Joins("JOIN flights ON flight_transactions.flight_id = flights.id").
+		Find(&pastFlightTickets).Error; err != nil {
+		return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "Failed to fetch past flight tickets",
+		})
+	}
+
+	// Mengembalikan response dengan data transaksi
+	return ctx.Status(fiber.StatusOK).JSON(pastFlightTickets)
+}
+
+func isSeatBooked(db *gorm.DB, flightID, seatNumber uint) bool {
+	var bookedSeat models.BookedSeat
+	if err := db.
+		Where("flight_id = ? AND seat_number = ?", flightID, seatNumber).
+		First(&bookedSeat).
+		Error; err != nil {
+		return false // Seat belum dibooking
+	}
+	return true // Seat sudah dibooking
+}
+
+func AddFlightTransaction(ctx *fiber.Ctx, db *gorm.DB) error {
 	var request struct {
-		TransactionID uint   `json:"transaction_id"`
+		FlightID      uint   `json:"flight_id"`
+		Seats         []uint `json:"seats"`
+		AddLuggage    bool   `json:"add_luggage"`
 		PaymentMethod string `json:"payment_method"`
 		PromoCode     string `json:"promo_code"`
 	}
@@ -163,154 +301,127 @@ func PayHotel(ctx *fiber.Ctx, db *gorm.DB) error {
 		})
 	}
 
-	// Validasi data
-	if request.TransactionID == 0 {
+	// Validasi data yang diterima dari frontend
+	if request.FlightID == 0 || len(request.Seats) == 0 || request.PaymentMethod == "" {
 		return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": "Transaction ID is required",
-		})
-	}
-	if request.PaymentMethod == "" {
-		return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": "Payment method is required",
+			"error": "Seat and Payment Method cannot be empty",
 		})
 	}
 
-	// Ambil data transaksi
+	// Ambil user
 	userID := GetUserID(ctx, db)
 
-	var transaction models.HotelTransaction
-	if err := db.Where("user_id = ?", userID).Preload("User").First(&transaction).Error; err != nil {
+	// Mengambil data harga dari flight
+	var flight models.Flight
+	if err := db.Select("price").First(&flight, request.FlightID).Error; err != nil {
 		return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": "Failed to get transaction detail",
+			"error": "Failed to fetch flight data",
 		})
 	}
 
-	// Validasi apakah transaksi telah kadaluarsa
-	if transaction.IsExpired {
-		return ctx.Status(fiber.StatusForbidden).JSON(fiber.Map{
-			"error": "Transaction has expired",
-		})
+	// Menghitung total harga berdasarkan jumlah seat dan harga flight
+	totalPrice := flight.Price * uint(len(request.Seats))
+
+	// Menambahkan biaya tambahan jika add_luggage true
+	if request.AddLuggage {
+		totalPrice += 300000
 	}
 
-	// Validasi waktu kadaluarsa
-	expirationTime := transaction.CreatedAt.Add(30 * time.Minute)
-	if time.Now().After(expirationTime) {
-		// Jika waktu hari ini sudah melewati created_date + 30 menit
-		// Set IsExpired pada transaksi menjadi true
-		transaction.IsExpired = true
-		if err := db.Save(&transaction).Error; err != nil {
-			return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-				"error": "Failed to update transaction expiration",
-			})
-		}
-
-		return ctx.Status(fiber.StatusForbidden).JSON(fiber.Map{
-			"error": "Transaction has expired",
-		})
-	}
-
+	// Discount if there is promo
 	// Validasi PromoCode
 	if request.PromoCode != "" {
-		var existingTransactions []models.HotelTransaction
-		if err := db.
-			Where("user_id = ? AND promo_code = ?", userID, request.PromoCode).
-			Find(&existingTransactions).Error; err == nil {
-			if len(existingTransactions) > 0 {
-				return ctx.Status(fiber.StatusConflict).JSON(fiber.Map{
-					"error": "Promo Code has already been used",
-				})
-			}
-		} else {
+		var promo models.Promo
+		if err := db.Where("code = ?", request.PromoCode).First(&promo).Error; err != nil {
+			return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"error": "Invalid Promo Code",
+			})
+		}
+
+		discount, _ := strconv.Atoi(promo.Discount)
+
+		// Kurangi totalPrice dengan diskon promo
+		totalPrice -= uint(discount)
+	}
+
+	// Query untuk mendapatkan informasi pengguna
+	var user models.User
+	if err := db.First(&user, userID).Error; err != nil {
+		return ctx.Status(fiber.StatusNotFound).JSON(fiber.Map{
+			"error": "User not found",
+		})
+	}
+
+	// Check Available Payment Method
+	// Validasi credit card ada
+	if request.PaymentMethod == "Credit Card" {
+		if user.CreditCard == "" {
+			return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"error": "You have not add credit card",
+			})
+		}
+	} else if request.PaymentMethod == "HI Wallet" {
+		// Validasi HI Wallet
+		if user.HIWallet < totalPrice {
+			return ctx.Status(fiber.StatusForbidden).JSON(fiber.Map{
+				"error": "Insufficient HIWallet balance",
+			})
+		}
+
+		// Mengurangkan saldo HIWallet
+		user.HIWallet -= totalPrice
+		if err := db.Save(&user).Error; err != nil {
 			return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-				"error": "Failed to check Promo Code",
+				"error": "Failed to update HIWallet balance",
 			})
 		}
 	}
 
-	// Ubah data transaksi
-	transaction.PaymentMethod = request.PaymentMethod
-	transaction.PromoCode = request.PromoCode
-	transaction.IsPaid = true
+	// Membuat Flight Transaction sejumlah seat yang dikirimkan
+	for _, seatNumber := range request.Seats {
+		// Cek apakah seatNumber sudah dibooking
+		if isSeatBooked(db, request.FlightID, seatNumber) {
+			return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"error": fmt.Sprintf("Seat %d has been booked", seatNumber),
+			})
+		}
 
-	// Simpan perubahan ke database
-	if err := db.Save(&transaction).Error; err != nil {
-		return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": "Failed to update transaction",
-		})
+		flightTransaction := models.FlightTransaction{
+			FlightID:      request.FlightID,
+			UserID:        userID,
+			SeatNumber:    seatNumber,
+			AddLuggage:    request.AddLuggage,
+			PaymentMethod: request.PaymentMethod,
+			PromoCode:     request.PromoCode,
+			TotalPrice:    totalPrice,
+		}
+
+		// Menambahkan seat ke BookedSeats
+		bookedSeat := models.BookedSeat{
+			FlightID:   request.FlightID,
+			SeatNumber: seatNumber,
+		}
+
+		if err := db.Create(&flightTransaction).Error; err != nil {
+			return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"error": "Failed to book flight",
+			})
+		}
+
+		if err := db.Create(&bookedSeat).Error; err != nil {
+			return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"error": "Failed to book flight",
+			})
+		}
+
 	}
 
-	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{
-		"message": "Transaction paid successfully",
+	// Mengembalikan response sukses
+	return ctx.Status(fiber.StatusCreated).JSON(fiber.Map{
+		"message": "Flight Transactions created successfully",
 	})
 }
 
-func GetHotelTransactionDetail(ctx *fiber.Ctx, db *gorm.DB) error {
-	// Ambil transaction_id dari parameter URL
-	transactionID, err := strconv.ParseUint(ctx.Params("id"), 10, 64)
-	if err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": "Invalid transaction_id",
-		})
-	}
-
-	// Ambil userID dari sesi atau sesuai dengan kebutuhan aplikasi Anda
-	userID := GetUserID(ctx, db)
-
-	var transaction models.HotelTransaction
-	if err := db.Where("id = ? AND user_id = ?", transactionID, userID).
-		Preload("User").
-		Preload("Room").
-		Preload("Room.RoomImages").
-		Preload("Room.Facilities").First(&transaction).Error; err != nil {
-		return ctx.Status(fiber.StatusNotFound).JSON(fiber.Map{
-			"error": "Transaction not found",
-		})
-	}
-
-	// Validasi apakah transaksi telah kadaluarsa
-	if transaction.IsExpired {
-		return ctx.Status(fiber.StatusForbidden).JSON(fiber.Map{
-			"error": "Transaction has expired",
-		})
-	}
-
-	// Validasi waktu kadaluarsa
-	expirationTime := transaction.CreatedAt.Add(30 * time.Minute)
-	if time.Now().After(expirationTime) {
-		// Jika waktu hari ini sudah melewati created_date + 30 menit
-		// Set IsExpired pada transaksi menjadi true
-		transaction.IsExpired = true
-		if err := db.Save(&transaction).Error; err != nil {
-			return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-				"error": "Failed to update transaction expiration",
-			})
-		}
-
-		return ctx.Status(fiber.StatusForbidden).JSON(fiber.Map{
-			"error": "Transaction has expired",
-		})
-	}
-
-	return ctx.Status(fiber.StatusOK).JSON(transaction)
-}
-
-// FLIGHT
-// func GetAllFlightTransaction(ctx *fiber.Ctx, db *gorm.DB) error {
-
-// }
-
-// func AddFlightTransaction(ctx *fiber.Ctx, db *gorm.DB) error {
-
-// }
-
-// func PayFlight(ctx *fiber.Ctx, db *gorm.DB) erro {
-
-// }
-
-// func GetFlightTransactionDetail(ctx *fiber.Ctx, db *gorm.DB) error {
-
-// }
-
+// CART
 // func AddAllCartTransaction(ctx *fiber.Ctx, db *gorm.DB) error {
 
 // }

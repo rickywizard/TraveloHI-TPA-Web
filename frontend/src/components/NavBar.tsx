@@ -1,6 +1,6 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { useState } from "react";
+import { KeyboardEvent, useState } from "react";
 import logo from "../assets/TraveLoHI-plain.png";
 import styled from "styled-components";
 import dummy from "../assets/dummy.webp";
@@ -12,6 +12,8 @@ import cart from "../assets/cart-shopping-solid.svg";
 import theme from "../assets/circle-half-stroke-solid.svg";
 import { useCurrency } from "../context/CurrencyContext";
 import { useTheme } from "../context/ThemeContext";
+import axios from "axios";
+import { useRecentSearch } from "../hooks/useRecentSearch";
 
 const Header = styled.header`
   position: sticky;
@@ -237,15 +239,64 @@ const TravelohiPay = styled.div`
   }
 `;
 
+const AIButton = styled.button`
+  width: 100%;
+  font-size: 0.875rem;
+  outline: 0;
+  border: none;
+  padding: 0.5rem;
+  border-radius: 5px;
+  background-color: var(--blue);
+  color: white;
+  transition: 0.3s background-color;
+  cursor: pointer;
+
+  &:hover {
+    background-color: var(--blue-shade);
+  }
+`
+
 const NavBar = () => {
+  const navigate = useNavigate();
   const { user, logout } = useAuth();
   const { darkMode, toggleDarkMode } = useTheme();
   const { setCurrency } = useCurrency();
+  const { data } = useRecentSearch();
 
+  const [showSearchDropdown, setShowSearchDropdown] = useState(false);
   const [showCurrencyDropdown, setShowCurrencyDropdown] = useState(false);
   const [showPayDropdown, setShowPayDropdown] = useState(false);
 
   const [selectedCurrency, setSelectedCurrency] = useState("IDR");
+
+  const [searchTerm, setSearchTerm] = useState("");
+
+  const handleSearchInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(e.target.value);
+  };
+
+  const handleSearchEnter = async (e: KeyboardEvent) => {
+    if (e.key === "Enter" && searchTerm.trim() !== "") {
+      // Redirect to search page with the search term
+      try {
+        const response = await axios.post(
+          "http://127.0.0.1:8000/api/save_search",
+          { search_word: searchTerm },
+          { withCredentials: true }
+        );
+
+        if (response.status === 200) {
+          console.log(response.data.message);
+        }
+      } catch (error) {
+        if (axios.isAxiosError(error)) {
+          console.log(error.response?.data.error);
+        }
+      }
+      setShowSearchDropdown(false);
+      navigate(`/search?term=${encodeURIComponent(searchTerm.trim())}`);
+    }
+  };
 
   const handleCurrencyChange = (currency: string) => {
     setSelectedCurrency(currency);
@@ -288,8 +339,35 @@ const NavBar = () => {
         </div>
 
         {/* search bar */}
-        <SearchBar>
-          <input type="text" placeholder="Search..." />
+        <SearchBar onClick={() => setShowSearchDropdown(!showSearchDropdown)}>
+          <input
+            type="text"
+            placeholder="Search..."
+            onChange={handleSearchInputChange}
+            onKeyDown={handleSearchEnter}
+          />
+          {showSearchDropdown && (
+            <DropdownContent
+              className={darkMode ? "dark" : "light"}
+              style={{ width: "100%" }}
+            >
+              <Link to="/ai-search">
+                <AIButton>Coba Pencarian AI Kami</AIButton>
+              </Link>
+              <h5>Pencarian Sebelumnya</h5>
+              {data.recent.map((rec, index) => (
+                <p style={{ fontSize: "0.875rem" }} key={index}>
+                  {rec.search_word}
+                </p>
+              ))}
+              <h5>Pencarian Terpopuler</h5>
+              {data.popular.map((pop, index) => (
+                <p style={{ fontSize: "0.875rem" }} key={index}>
+                  {pop.search_word}
+                </p>
+              ))}
+            </DropdownContent>
+          )}
         </SearchBar>
 
         {/* cart */}
@@ -411,8 +489,7 @@ const NavBar = () => {
                     <Profile src={user.profile_picture_url} alt="👤" />
                   </div>
                   <p>
-                    {user.first_name} {user.last_name} <br />
-                    <span>{user.points} pts.</span>
+                    {user.first_name} {user.last_name}
                   </p>
                 </Menu>
               </Link>

@@ -41,6 +41,7 @@ func main() {
 	seeders.SeedPromo(db)
 	seeders.SeedFacility(db)
 	seeders.SeedHotel(db)
+	seeders.SeedFlights(db)
 
 	// Middleware
 	app.Use(recover.New())
